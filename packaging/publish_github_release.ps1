@@ -39,10 +39,10 @@ try {
         target_commitish = "main"
         name = "QianYu 0.9.0"
         body = "QianYu 0.9.0 RC. Unsigned until SignPath Foundation signing is approved."
-        draft = $false
+        draft = $true
         prerelease = $true
     }
-    Write-Host "Created release $($release.id)"
+    Write-Host "Created draft release $($release.id)"
 } catch {
     Write-Host "Release create failed, trying existing tag: $($_.Exception.Message)"
     $release = Invoke-GitHub "GET" "$api/releases/tags/$Tag"
@@ -75,6 +75,11 @@ function Set-ActionVariable([string]$Name, [string]$Value) {
 
 Set-ActionVariable "LIBMPV_URL" $libmpvUrl
 Set-ActionVariable "LIBMPV_SHA256" $libmpvHash
+
+# Publish last: this creates the tag and triggers release.yml only after the
+# libmpv asset and Actions variables exist.
+Invoke-GitHub "PATCH" "$api/releases/$($release.id)" @{ draft = $false } | Out-Null
+Write-Host "Published release $($release.id)"
 
 Write-Host "Release: https://github.com/$Repo/releases/tag/$Tag"
 Write-Host "Next: https://signpath.org/apply"
