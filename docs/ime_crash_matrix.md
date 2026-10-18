@@ -28,10 +28,39 @@
 - 托盘不是原因：禁用托盘后仍有 3/50；
 - offscreen 不加载 Windows IME，0/30。
 
+## 组件二分（默认搜狗 IME）
+
+| 最小组件 | 次数 | 崩溃 |
+|---|---:|---:|
+| QLineEdit | 50 | 0 |
+| + QTableView | 50 | 0 |
+| + QListWidget | 50 | 0 |
+| + QSystemTrayIcon/QMenu | 50 | 0 |
+| + 深色 QSS | 50 | 0 |
+| 以上全部 | 50 | 0 |
+| MpvEngine（无窗口） | 50 | 0 |
+| MpvEngine + QLineEdit 窗口 | 50 | 0 |
+
+**简单 Qt 组件 0/300，mpv 0/100。**  
+说明崩溃需要完整 MainWindow 的某些组合，而不是单独 QLineEdit、表格、托盘或 mpv。
+
 ## 结论
 
 **强相关：Windows 原生 IME（当前为搜狗输入法）注入。**  
-不能设置 `QT_IM_MODULE=qt` 作为默认，因为会破坏中文输入法候选窗/组合输入。
+但最小组件与 mpv 组合都没有复现，暂无法直接作为 Qt/Sogou 的最小 bug 报告。
+
+## 微软拼音矩阵
+
+沙箱无法修改输入法（`Set-WinDefaultInputMethodOverride` 返回成功但注册表仍为搜狗；直接写 HKCU 被拒绝）。
+
+准备脚本：
+
+```powershell
+# 先 Win+Space 切到微软拼音
+python spike\ime_matrix_ms.py
+```
+
+脚本会检测当前 IME，若不是微软拼音则退出，不会误测。
 
 ## 下一步
 
