@@ -34,7 +34,7 @@ Release 资产建议：
 仓库 Settings → Secrets and variables → Actions → Variables：
 
 ```
-LIBMPV_URL    = https://github.com/<user>/qianyu/releases/download/v0.9.0-assets/libmpv-2.dll
+LIBMPV_URL    = https://github.com/TomJerryGit/qianyu/releases/download/v0.9.0-assets/libmpv-2.dll
 LIBMPV_SHA256 = 44af8b7f5ff45cf50db49b9866fe9238e84c4d935122576c4c6f7ce859226e8a
 ```
 
@@ -55,9 +55,10 @@ LIBMPV_SHA256 = 44af8b7f5ff45cf50db49b9866fe9238e84c4d935122576c4c6f7ce859226e8a
 - 下载签名后的 exe/installer；
 - `Get-AuthenticodeSignature` 应为 `Valid`。
 
-## 当前阻塞
+## 当前状态
 
-- 尚无 GitHub 仓库；
-- `CODE_SIGNING_POLICY.md` 仍是占位用户名；
-- 完整 GPL 文本建议由 GitHub 创建仓库时生成；
-- `LICENSE` 目前是声明 + 官方链接。
+- 仓库已创建并推送：https://github.com/TomJerryGit/qianyu
+- `CODE_SIGNING_POLICY.md` 已填 `@TomJerryGit`
+- `PRIVACY.md` 已填联系邮箱
+- `LICENSE` 已替换为完整 GPL-3.0 文本
+- 仍需：Release 资产、`LIBMPV_URL`/`LIBMPV_SHA256`、SignPath 申请。

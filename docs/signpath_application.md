@@ -19,9 +19,9 @@
 
 ```text
 Project: QianYu
-Repository: https://github.com/<user>/qianyu
+Repository: https://github.com/TomJerryGit/qianyu
 License: GPL-3.0-only
-Latest release: https://github.com/<user>/qianyu/releases/tag/v0.9.0
+Latest release: https://github.com/TomJerryGit/qianyu/releases/tag/v0.9.0
 
 QianYu is an open-source Windows local music/video player built with
 Python, PySide6, libmpv and Inno Setup. It is actively maintained.
@@ -31,8 +31,8 @@ Artifacts to sign:
 - QianYu.exe
 - QianYu-0.9.0-setup.exe
 
-Code signing policy: https://github.com/<user>/qianyu/blob/main/CODE_SIGNING_POLICY.md
-Privacy policy: https://github.com/<user>/qianyu/blob/main/PRIVACY.md
+Code signing policy: https://github.com/TomJerryGit/qianyu/blob/main/CODE_SIGNING_POLICY.md
+Privacy policy: https://github.com/TomJerryGit/qianyu/blob/main/PRIVACY.md
 ```
 
 ## 申请后
@@ -52,11 +52,14 @@ SignPath 通过后提供：
 
 把 `release.yml` 的“upload unsigned”步骤替换为 SignPath 签名请求，人工批准后下载已签名产物。
 
-## 当前仓库缺口
+## 当前仓库状态
 
-- 还没有真实 GitHub 仓库 URL；
-- `CODE_SIGNING_POLICY.md` 里是 `@YOUR_GITHUB_USERNAME`；
-- `PRIVACY.md` 联系邮箱待填；
-- `LICENSE` 目前是 GPL-3.0 声明 + 官方链接，公开前应补完整 GPL 文本；
-- `LIBMPV_URL`/`LIBMPV_SHA256` 未配置；
-- 尚无正式 Release。
+- GitHub 仓库：https://github.com/TomJerryGit/qianyu
+- `CODE_SIGNING_POLICY.md`：已填 `@TomJerryGit`
+- `PRIVACY.md`：已填 `1265338136@qq.com`
+- `LICENSE`：完整 GPL-3.0 文本
+- GitHub Actions：`ci.yml` + `release.yml`
+- 待办：
+  - 创建 `v0.9.0` Release 并上传 exe/zip/libmpv；
+  - 配置 `LIBMPV_URL`/`LIBMPV_SHA256`；
+  - 提交 SignPath 申请。

@@ -8,9 +8,9 @@ QianYu repository.
 
 ## Team roles
 
-- Authors/Committers: `@YOUR_GITHUB_USERNAME`
-- Reviewers: `@YOUR_GITHUB_USERNAME`
-- Approvers: `@YOUR_GITHUB_USERNAME`
+- Authors/Committers: `@TomJerryGit`
+- Reviewers: `@TomJerryGit`
+- Approvers: `@TomJerryGit`
 
 For a single-maintainer project all roles may be held by the same person.
 Pull requests from non-committers still require review before merge.
