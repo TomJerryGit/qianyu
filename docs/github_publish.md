@@ -55,6 +55,18 @@ LIBMPV_SHA256 = 44af8b7f5ff45cf50db49b9866fe9238e84c4d935122576c4c6f7ce859226e8a
 - 下载签名后的 exe/installer；
 - `Get-AuthenticodeSignature` 应为 `Valid`。
 
+## 自动发布脚本（可选）
+
+如果本机有 GitHub PAT（repo 权限）：
+
+```powershell
+$env:GITHUB_TOKEN = "github_pat_..."
+powershell -ExecutionPolicy Bypass -File packaging\publish_github_release.ps1
+```
+
+它会创建 `v0.9.0` Release、上传 `dist\github-release` 资产，并设置
+`LIBMPV_URL` / `LIBMPV_SHA256` 两个 Actions 变量。
+
 ## 当前状态
 
 - 仓库已创建并推送：https://github.com/TomJerryGit/qianyu
