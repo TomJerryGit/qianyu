@@ -1,0 +1,5 @@
+# PySide6 runtime (Python >=3.9; validated on Python 3.11.9 + PySide6 6.12.0)
+PySide6-Essentials>=6.8,<6.9
+python-mpv>=1.0.6
+mutagen>=1.47.0
+Pillow>=10.0

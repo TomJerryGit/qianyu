@@ -1,0 +1,75 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-unsigned:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install PySide6-Essentials==6.8.3 python-mpv mutagen Pillow cryptography imageio-ffmpeg pyinstaller
+
+      - name: Fetch libmpv (pinned)
+        shell: pwsh
+        env:
+          LIBMPV_URL: ${{ vars.LIBMPV_URL }}
+          LIBMPV_SHA256: ${{ vars.LIBMPV_SHA256 }}
+        run: |
+          if (-not $env:LIBMPV_URL) { throw "Set repository variable LIBMPV_URL to a pinned libmpv-2.dll asset." }
+          Invoke-WebRequest -Uri $env:LIBMPV_URL -OutFile libmpv-2.dll
+          $hash = (Get-FileHash libmpv-2.dll -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($env:LIBMPV_SHA256 -and $hash -ne $env:LIBMPV_SHA256.ToLowerInvariant()) {
+            throw "libmpv SHA256 mismatch: $hash"
+          }
+
+      - name: Build application
+        run: |
+          python -m PyInstaller --noconfirm --clean --distpath dist-pyside6 --workpath build-pyside6 packaging\qianyu-pyside6.spec
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          if (Test-Path dist) { Remove-Item dist -Recurse -Force }
+          Copy-Item dist-pyside6 dist -Recurse
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" packaging\qianyu.iss
+
+      - name: Checksums
+        shell: pwsh
+        run: |
+          Get-FileHash dist\QianYu\QianYu.exe, dist\installer\QianYu-0.9.0-setup.exe -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLowerInvariant())  $(Split-Path $_.Path -Leaf)" } |
+            Set-Content dist\SHA256SUMS.txt
+
+      - name: Upload unsigned artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: qianyu-unsigned
+          path: |
+            dist\QianYu\QianYu.exe
+            dist\installer\QianYu-0.9.0-setup.exe
+            dist\SHA256SUMS.txt
+
+      # After SignPath Foundation approval, replace the upload-only flow with:
+      # 1. upload the unsigned artifact to SignPath,
+      # 2. submit a signing request,
+      # 3. wait for manual approval,
+      # 4. download the signed artifact and publish it.
+      # Do not sign with a self-signed certificate for public releases.

@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qianyu"
+version = "0.9.0.dev0"
+description = "浅语影音：libmpv-based music and video player"
+requires-python = ">=3.8"
+license = {text = "GPL-3.0-only"}
+dependencies = [
+    "PyQt5>=5.15.9",
+    "python-mpv>=1.0.6",
+    "mutagen>=1.47.0",
+]
+
+[project.scripts]
+qianyu = "qianyu.ui.app:main"
+
+[project.optional-dependencies]
+test = ["pytest>=8.0", "Pillow>=10.0", "numpy>=1.24", "cryptography>=41"]
+pyside6 = ["PySide6-Essentials>=6.8,<6.9", "python-mpv>=1.0.6", "mutagen>=1.47.0", "Pillow>=10.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests/unit"]
+addopts = "-q"

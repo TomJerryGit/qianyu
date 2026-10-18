@@ -1,0 +1,136 @@
+# -*- coding: utf-8 -*-
+"""Settings dialog (theme, tray, media keys, output device, library folders)."""
+from __future__ import annotations
+
+from pathlib import Path
+
+from ..qt import Qt
+from ..qt import (
+    QCheckBox, QComboBox, QDialog, QFileDialog, QHBoxLayout, QLabel, QLineEdit,
+    QListWidget, QPushButton, QVBoxLayout,
+)
+
+from ..config import Config
+
+
+class SettingsDialog(QDialog):
+    def __init__(self, config: Config, engine, parent=None):
+        super().__init__(parent)
+        self._config = config
+        self._engine = engine
+        self.setWindowTitle("设置")
+        self.setMinimumWidth(520)
+        self._build()
+
+    def _build(self) -> None:
+        layout = QVBoxLayout(self)
+
+        layout.addWidget(QLabel("主题"))
+        self._theme = QComboBox()
+        self._theme.addItem("深色", "dark")
+        self._theme.addItem("浅色", "light")
+        index = self._theme.findData(str(self._config.get("theme", "dark")))
+        self._theme.setCurrentIndex(max(0, index))
+        layout.addWidget(self._theme)
+
+        self._close_to_tray = QCheckBox("关闭窗口时最小化到托盘")
+        self._close_to_tray.setChecked(bool(self._config.get("close_to_tray", True)))
+        layout.addWidget(self._close_to_tray)
+
+        self._media_keys = QCheckBox("启用全局媒体键（播放/暂停、上一首、下一首、停止）")
+        self._media_keys.setChecked(bool(self._config.get("global_media_keys", True)))
+        layout.addWidget(self._media_keys)
+
+        layout.addWidget(QLabel("输出设备"))
+        self._device = QComboBox()
+        current = self._engine.audio_device
+        self._device.addItem("自动", "auto")
+        for device in self._engine.audio_devices:
+            name = str(device.get("name", ""))
+            if name and name != "auto":
+                self._device.addItem(str(device.get("description", name)), name)
+        index = self._device.findData(current)
+        self._device.setCurrentIndex(max(0, index))
+        layout.addWidget(self._device)
+
+        layout.addWidget(QLabel("ReplayGain"))
+        self._replaygain = QComboBox()
+        self._replaygain.addItem("关闭", "no")
+        self._replaygain.addItem("按曲目", "track")
+        self._replaygain.addItem("按专辑", "album")
+        rg_index = self._replaygain.findData(str(self._config.get("replaygain", "no")))
+        self._replaygain.setCurrentIndex(max(0, rg_index))
+        layout.addWidget(self._replaygain)
+
+        self._exclusive = QCheckBox("WASAPI 独占模式（可能独占音频设备）")
+        self._exclusive.setChecked(bool(self._config.get("audio_exclusive", False)))
+        layout.addWidget(self._exclusive)
+
+        layout.addWidget(QLabel("更新源（manifest.json URL，可留空）"))
+        self._update_url = QLineEdit(str(self._config.get("update_url", "")))
+        self._update_url.setPlaceholderText("https://example.com/qianyu/manifest.json")
+        layout.addWidget(self._update_url)
+
+        layout.addWidget(QLabel("更新公钥（Ed25519，base64，可留空）"))
+        self._update_key = QLineEdit(str(self._config.get("update_public_key", "")))
+        self._update_key.setPlaceholderText("base64 public key")
+        layout.addWidget(self._update_key)
+
+        layout.addWidget(QLabel("音乐文件夹"))
+        self._folders = QListWidget()
+        for folder in self._config.get("library_folders", []) or []:
+            self._folders.addItem(str(folder))
+        layout.addWidget(self._folders)
+        folder_buttons = QHBoxLayout()
+        add = QPushButton("添加…")
+        add.clicked.connect(self._add_folder)
+        remove = QPushButton("移除")
+        remove.clicked.connect(self._remove_folder)
+        folder_buttons.addWidget(add)
+        folder_buttons.addWidget(remove)
+        folder_buttons.addStretch(1)
+        layout.addLayout(folder_buttons)
+
+        layout.addStretch(1)
+        buttons = QHBoxLayout()
+        buttons.addStretch(1)
+        cancel = QPushButton("取消")
+        cancel.clicked.connect(self.reject)
+        ok = QPushButton("保存")
+        ok.setDefault(True)
+        ok.clicked.connect(self.accept)
+        buttons.addWidget(cancel)
+        buttons.addWidget(ok)
+        layout.addLayout(buttons)
+
+    def _add_folder(self) -> None:
+        folder = QFileDialog.getExistingDirectory(self, "选择音乐文件夹")
+        if folder and not self._folders.findItems(folder, Qt.MatchExactly):
+            self._folders.addItem(folder)
+
+    def _remove_folder(self) -> None:
+        row = self._folders.currentRow()
+        if row >= 0:
+            self._folders.takeItem(row)
+
+    def accept(self) -> None:
+        self._config.set("theme", self._theme.currentData())
+        self._config.set("close_to_tray", self._close_to_tray.isChecked())
+        self._config.set("global_media_keys", self._media_keys.isChecked())
+        self._config.set("library_folders", [self._folders.item(i).text() for i in range(self._folders.count())])
+        self._config.set("update_url", self._update_url.text().strip())
+        self._config.set("update_public_key", self._update_key.text().strip())
+        try:
+            self._engine.set_replaygain(str(self._replaygain.currentData()))
+            self._config.set("replaygain", str(self._replaygain.currentData()))
+            self._engine.set_audio_exclusive(self._exclusive.isChecked())
+            self._config.set("audio_exclusive", self._exclusive.isChecked())
+        except Exception:
+            pass
+        device = self._device.currentData()
+        if device:
+            try:
+                self._engine.audio_device = device
+            except Exception:
+                pass
+        super().accept()

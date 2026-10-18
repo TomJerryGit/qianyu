@@ -1,0 +1,50 @@
+{
+  "version": "1.0",
+  "status": "frozen",
+  "frozen_at": "2026-10-17",
+  "product": "浅语影音 双模版",
+  "source": "docs/video_scope_1.0.md",
+  "rules": {
+    "in_scope": "V01-V20 only",
+    "new_feature": "goes to 1.2 backlog unless an equal-size item is removed with product+tech sign-off",
+    "release_gate": "all P0 green; P1 gaps need written waiver and release-note disclosure"
+  },
+  "items": [
+    {"id": "V01", "name": "打开本地文件/拖放/最近/命令行", "priority": "P0", "phase": 2, "acceptance": "双击、拖入、--play、最近列表起播；错误提示", "depends_on": ["file_association", "single_instance"]},
+    {"id": "V02", "name": "打开网络 URL（HTTP/HLS）", "priority": "P0", "phase": 2, "acceptance": "弱网可缓冲/停止；失败可重试；不阻塞 UI", "depends_on": ["libmpv_network"]},
+    {"id": "V03", "name": "播放/暂停/停止/seek/音量/静音", "priority": "P0", "phase": 2, "acceptance": "响应≤100ms；seek首帧≤500ms", "depends_on": ["engine"]},
+    {"id": "V04", "name": "全屏/无边框/多屏/置顶", "priority": "P0", "phase": 2, "acceptance": "切换≤200ms；混合DPI不错位", "depends_on": ["wid"]},
+    {"id": "V05", "name": "硬件解码(D3D11VA/DXVA2)+软解回退", "priority": "P0", "phase": 2, "acceptance": "参考机4K60 HEVC 0丢帧；强制软解可播", "depends_on": ["4k_hdr_samples", "gpu_matrix"]},
+    {"id": "V06", "name": "字幕(SRT/ASS/SSA/编码/延迟/字体/位置)", "priority": "P0", "phase": 2, "acceptance": "简繁日英、GBK/Big5/UTF-8、ASS特效正确", "depends_on": ["libass"]},
+    {"id": "V07", "name": "音轨/字幕轨切换", "priority": "P0", "phase": 2, "acceptance": "无爆音；按文件记忆", "depends_on": ["engine_props"]},
+    {"id": "V08", "name": "画面比例/裁剪/旋转/去隔行", "priority": "P1", "phase": 3, "acceptance": "16:9/4:3/原始/自定义；旋转90/180/270", "depends_on": ["mpv_props"]},
+    {"id": "V09", "name": "倍速0.25-4.0(变调补偿)", "priority": "P1", "phase": 3, "acceptance": "音画同步；无明显失真", "depends_on": ["mpv_speed"]},
+    {"id": "V10", "name": "续播/历史/最近观看", "priority": "P0", "phase": 2, "acceptance": "±2s恢复；>95%不提示；异常退出可恢复", "depends_on": ["sqlite"]},
+    {"id": "V11", "name": "截图(含/不含字幕)", "priority": "P1", "phase": 3, "acceptance": "路径/格式可配；截图成功", "depends_on": ["mpv_screenshot"]},
+    {"id": "V12", "name": "OSD/控制条自动隐藏/滚轮/手势", "priority": "P0", "phase": 2, "acceptance": "鼠标/键盘/触控板可用；全屏可退出", "depends_on": ["wid", "osc"]},
+    {"id": "V13", "name": "视频队列/文件夹连播", "priority": "P0", "phase": 2, "acceptance": "播完自动下一集；顺序/随机可配", "depends_on": ["playlist"]},
+    {"id": "V14", "name": "章节", "priority": "P1", "phase": 3, "acceptance": "列表正确；跳转准确", "depends_on": ["mpv_chapters"]},
+    {"id": "V15", "name": "书签", "priority": "P1", "phase": 3, "acceptance": "增删改；按文件持久化；跳转准确", "depends_on": ["sqlite"]},
+    {"id": "V16", "name": "A-B循环/逐帧", "priority": "P1", "phase": 3, "acceptance": "精确到帧；可清除", "depends_on": ["mpv_ab"]},
+    {"id": "V17", "name": "HDR→SDR色调映射", "priority": "P1", "phase": 2, "acceptance": "HDR10/HLG不过曝不发灰；可关闭", "depends_on": ["gpu_next", "hdr_display"]},
+    {"id": "V18", "name": "字幕样式/位置记忆(按文件)", "priority": "P1", "phase": 3, "acceptance": "重开恢复字体/大小/位置/延迟", "depends_on": ["sqlite"]},
+    {"id": "V19", "name": "画面色彩调整(亮度/对比度/饱和度/伽马/色相)", "priority": "P1", "phase": 2, "acceptance": "实时生效；可重置；按会话记忆", "depends_on": ["mpv_props"]},
+    {"id": "V20", "name": "音频延迟/A-V同步调整", "priority": "P1", "phase": 2, "acceptance": "±500ms可调；音画同步；可重置", "depends_on": ["mpv_audio_delay"]}
+  ],
+  "backlog_1_2": [
+    {"id": "B01", "name": "双字幕", "reason": "非核心；依赖secondary-sid与UI"},
+    {"id": "B02", "name": "seek缩略图预览", "reason": "额外解码管线与缓存；性能风险"},
+    {"id": "B03", "name": "SMB/DLNA/DVD/BD", "reason": "组件与兼容成本高"},
+    {"id": "B04", "name": "音频直通(AC3/DTS/TrueHD/Atmos)", "reason": "家庭影院小众；需功放矩阵"},
+    {"id": "B05", "name": "HDR直通/OS HDR", "reason": "1.0只做HDR→SDR；直通需系统/显示矩阵"},
+    {"id": "B06", "name": "render API自定义覆盖控件/视频皮肤", "reason": "1.0采用wid+下方控制条"},
+    {"id": "B07", "name": "3D/VR/360", "reason": "长尾"},
+    {"id": "B08", "name": "直播流/视频采集", "reason": "与定位无关"},
+    {"id": "B09", "name": "视频滤镜/着色器市场", "reason": "生态型能力"},
+    {"id": "B10", "name": "在线视频搜索/下载", "reason": "版权与稳定性风险"},
+    {"id": "B11", "name": "视频海报墙/元数据刮削", "reason": "1.0只做最近/文件夹队列"},
+    {"id": "B12", "name": "画中画(PiP)", "reason": "非核心"},
+    {"id": "B13", "name": "在线字幕搜索/下载", "reason": "需授权与供应商"},
+    {"id": "B14", "name": "逐帧音频波形/可视化", "reason": "音乐侧1.3"}
+  ]
+}
