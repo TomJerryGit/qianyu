@@ -46,6 +46,7 @@ converter/
 /data/
 *.zip
 *.7z
+*.bundle
 *.pfx
 *.p12
 spike/out/
