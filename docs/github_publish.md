@@ -34,7 +34,7 @@ Release 资产建议：
 仓库 Settings → Secrets and variables → Actions → Variables：
 
 ```
-LIBMPV_URL    = https://github.com/TomJerryGit/qianyu/releases/download/v0.9.0-assets/libmpv-2.dll
+LIBMPV_URL    = https://github.com/TomJerryGit/qianyu/releases/download/v0.9.0/libmpv-2.dll
 LIBMPV_SHA256 = 44af8b7f5ff45cf50db49b9866fe9238e84c4d935122576c4c6f7ce859226e8a
 ```
 
