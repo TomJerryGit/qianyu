@@ -128,6 +128,7 @@ tests/unit/      单元测试
 - [媒体库生产化路线（CUE/在线元数据）](docs/media_library_roadmap.md)
 - [生产发布链](docs/release_chain.md)
 - [本地生产验收记录](docs/acceptance_2026-10-18.md)
+- [下载页](DOWNLOAD.md)
 - [代码签名政策](CODE_SIGNING_POLICY.md)
 - [SignPath Foundation 申请清单](docs/signpath_application.md)
 - [GitHub 发布与 SignPath 步骤](docs/github_publish.md)
