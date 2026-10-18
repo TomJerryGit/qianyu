@@ -268,23 +268,16 @@ class MpvEngine:
         self._mpv.speed = max(0.25, min(4.0, float(speed)))
 
     def shutdown(self) -> None:
-        # The property observers still fire while libmpv tears down; they must
-        # not touch the handle after this point or python-mpv segfaults.
+        # Property observers may still fire while libmpv tears down. Disable
+        # them first, then terminate synchronously: python-mpv's terminate()
+        # joins its event thread. Exiting while that thread is still alive can
+        # crash during Python finalization (intermittent 0xC0000005).
         self._alive = False
         self._on_event = None
-
-        def _terminate():
-            try:
-                self._mpv.terminate()
-            except Exception:
-                pass
-
-        # Qt bindings may have an in-flight queued signal while the mpv event
-        # thread is being joined. Do not let a stuck event thread block app
-        # exit; the thread is a daemon inside python-mpv.
-        worker = threading.Thread(target=_terminate, daemon=True)
-        worker.start()
-        worker.join(timeout=3.0)
+        try:
+            self._mpv.terminate()
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     # internals

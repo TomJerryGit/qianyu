@@ -18,7 +18,10 @@ def main() -> int:
     env = dict(os.environ)
     env["QT_QPA_PLATFORM"] = "windows"
     env["QIANYU_NO_SINGLE_INSTANCE"] = "1"
-    env.pop("QIANYU_NO_TRAY", None)
+    if os.environ.get("QIANYU_FORCE_NO_TRAY") == "1":
+        env["QIANYU_NO_TRAY"] = "1"
+    else:
+        env.pop("QIANYU_NO_TRAY", None)
     results = []
     with LOG.open("w", encoding="utf-8") as log:
         for index in range(1, 21):
