@@ -34,11 +34,18 @@ jobs:
         run: |
           $url = "https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20261018/mpv-dev-x86_64-20261018-git-01e2533f31.7z"
           $expected = "d7f5621f42b6e161fe032df914a10bdece28a89df3e57c6c3e16a5a250929b5e"
-          Invoke-WebRequest -Uri $url -OutFile mpv-dev.7z
+          curl.exe -L --fail --retry 3 --retry-delay 2 -o mpv-dev.7z $url
+          if ($LASTEXITCODE -ne 0) { throw "libmpv download failed" }
           $hash = (Get-FileHash mpv-dev.7z -Algorithm SHA256).Hash.ToLowerInvariant()
+          Write-Host "libmpv archive: $((Get-Item mpv-dev.7z).Length) bytes, $hash"
           if ($hash -ne $expected) { throw "libmpv archive SHA256 mismatch: $hash" }
-          & "C:\Program Files\7-Zip\7z.exe" e mpv-dev.7z libmpv-2.dll -o. -y
-          if (-not (Test-Path libmpv-2.dll)) { throw "libmpv-2.dll not found in archive" }
+          $seven = "C:\Program Files\7-Zip\7z.exe"
+          if (-not (Test-Path $seven)) { $seven = (Get-Command 7z.exe).Source }
+          & $seven x mpv-dev.7z -ompv-extract -y
+          $dll = Get-ChildItem mpv-extract -Recurse -Filter libmpv-2.dll | Select-Object -First 1
+          if (-not $dll) { throw "libmpv-2.dll not found in archive" }
+          Copy-Item $dll.FullName libmpv-2.dll -Force
+          Write-Host "libmpv-2.dll: $((Get-Item libmpv-2.dll).Length) bytes"
 
       - name: Build application
         run: |
