@@ -87,4 +87,5 @@ powershell -ExecutionPolicy Bypass -File packaging\publish_github_release.ps1
 - `CODE_SIGNING_POLICY.md` 已填 `@TomJerryGit`
 - `PRIVACY.md` 已填联系邮箱
 - `LICENSE` 已替换为完整 GPL-3.0 文本
-- 仍需：打 `v0.9.0` tag、等待 Release workflow、提交 SignPath 申请。
+- Release 已由 Actions 自动生成：https://github.com/TomJerryGit/qianyu/releases/tag/v0.9.0
+- 仍需：提交 SignPath 申请。

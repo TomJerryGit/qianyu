@@ -58,6 +58,7 @@ SignPath 通过后提供：
 - `PRIVACY.md`：已填 `1265338136@qq.com`
 - `LICENSE`：完整 GPL-3.0 文本
 - GitHub Actions：`ci.yml` + `release.yml`
+- Release：https://github.com/TomJerryGit/qianyu/releases/tag/v0.9.0
+  - 已由 Actions 自动构建并上传 exe / portable / libmpv / SHA256SUMS
 - 待办：
-  - 打 `v0.9.0` tag，让 `release.yml` 自动生成 Release；
   - 提交 SignPath 申请。
