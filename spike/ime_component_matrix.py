@@ -19,7 +19,7 @@ def main() -> int:
     env_base.pop("QT_IM_MODULE", None)
     env_base.pop("QIANYU_NO_TRAY", None)
     report = {}
-    for mode in ("edit", "table", "list", "tray", "qss", "all"):
+    for mode in ("edit", "timer", "table", "list", "tray", "qss", "all"):
         crashes = 0
         durations = []
         env = dict(env_base)

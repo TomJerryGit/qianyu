@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QTableView, QVBoxLayout, QWidget,
 )
 from PySide6.QtGui import QStandardItem, QStandardItemModel
+from PySide6.QtCore import QTimer
 
 mode = os.environ.get("QIANYU_IME_MODE", "edit")
 app = QApplication(sys.argv)
@@ -17,6 +18,11 @@ window = QMainWindow()
 central = QWidget()
 layout = QVBoxLayout(central)
 layout.addWidget(QLineEdit("IME test"))
+
+if mode == "timer":
+    timer = QTimer(window)
+    timer.timeout.connect(lambda: None)
+    timer.start(200)
 
 if mode in ("table", "all"):
     model = QStandardItemModel(100, 4)

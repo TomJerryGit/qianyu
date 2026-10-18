@@ -78,7 +78,8 @@ def main(argv: list[str] | None = None) -> int:
     bootstrap(f"app: server listen={server.isListening()}")
 
     config = Config()
-    app.setStyleSheet(_load_theme(str(config.get("theme", "dark"))))
+    if not os.environ.get("QIANYU_NO_QSS"):
+        app.setStyleSheet(_load_theme(str(config.get("theme", "dark"))))
     window = MainWindow(config)
     bootstrap("app: window created")
     window.show()
@@ -100,12 +101,13 @@ def main(argv: list[str] | None = None) -> int:
 
     if "--smoke" in (argv if argv is not None else sys.argv):
         # Initialization smoke: prove imports, Qt platform, libmpv, theme and
-        # window construction work, then exit without entering the event loop.
-        # os._exit avoids python-mpv's non-daemon event thread keeping the
-        # process alive when no event loop was ever started.
-        app.processEvents()
-        bootstrap("app: smoke init ok")
-        os._exit(0)
+        # window construction work. Let the Qt loop turn once: calling
+        # os._exit immediately after show() races Windows IME initialization
+        # and produces intermittent 0xC0000005 in the smoke process.
+        from ..qt import QTimer
+
+        QTimer.singleShot(2500, lambda: os._exit(0))
+        app.exec()
     bootstrap("app: exec")
     code = app.exec()
     bootstrap(f"app: exec returned {code}")

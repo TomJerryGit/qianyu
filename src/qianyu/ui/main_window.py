@@ -153,7 +153,8 @@ class MainWindow(QMainWindow):
         self._volume.setValue(int(config.get("volume", 70)))
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
-        self._timer.start(200)
+        if not os.environ.get("QIANYU_NO_TIMER"):
+            self._timer.start(200)
 
         self.setWindowTitle("浅语影音 0.9")
         width = int(config.get("window", {}).get("w", 1180))
