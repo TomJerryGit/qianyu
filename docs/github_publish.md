@@ -20,27 +20,41 @@
 - `docs/signpath_application.md`
 - `README.md` 中的链接
 
-## 3. 发布 v0.9.0 Release
+## 3. 打 tag，自动发布 Release
 
-Release 资产建议：
+`release.yml` 已改为自动完成：
 
-- `QianYu-0.9.0-setup.exe`
-- `QianYu-0.9.0-portable.zip`
-- `libmpv-2.dll`（作为 release asset，不放进仓库）
-- `SHA256SUMS.txt`
+- 从 shinchiro/mpv-winbuild-cmake 下载**固定版本**的 `mpv-dev-x86_64`；
+- 校验 SHA-256；
+- 解压 `libmpv-2.dll`；
+- PyInstaller 构建；
+- Inno 编译安装包；
+- 生成便携 ZIP 和 SHA256SUMS；
+- 用 GitHub Actions 自带 token 创建 `prerelease` 并上传资产。
 
-## 4. 配置 Actions 变量
+本机执行：
 
-仓库 Settings → Secrets and variables → Actions → Variables：
+```powershell
+$git = "C:\Program Files\Git\cmd\git.exe"
+& $git -C D:\qianyu tag v0.9.0
+& $git -C D:\qianyu push origin v0.9.0
+```
+
+然后打开：
 
 ```
-LIBMPV_URL    = https://github.com/TomJerryGit/qianyu/releases/download/v0.9.0/libmpv-2.dll
-LIBMPV_SHA256 = 44af8b7f5ff45cf50db49b9866fe9238e84c4d935122576c4c6f7ce859226e8a
+https://github.com/TomJerryGit/qianyu/actions
 ```
 
-`release.yml` 会下载并校验 libmpv；未配置时构建会明确失败。
+等待 `release` workflow 完成，Release 会自动出现在：
 
-## 5. 申请 SignPath
+```
+https://github.com/TomJerryGit/qianyu/releases/tag/v0.9.0
+```
+
+> 不再需要配置 `LIBMPV_URL` / `LIBMPV_SHA256`。
+
+## 4. 申请 SignPath
 
 - 打开 https://signpath.org/apply
 - 填仓库地址、GPL-3.0、Release 链接、构建方式
@@ -73,4 +87,4 @@ powershell -ExecutionPolicy Bypass -File packaging\publish_github_release.ps1
 - `CODE_SIGNING_POLICY.md` 已填 `@TomJerryGit`
 - `PRIVACY.md` 已填联系邮箱
 - `LICENSE` 已替换为完整 GPL-3.0 文本
-- 仍需：Release 资产、`LIBMPV_URL`/`LIBMPV_SHA256`、SignPath 申请。
+- 仍需：打 `v0.9.0` tag、等待 Release workflow、提交 SignPath 申请。

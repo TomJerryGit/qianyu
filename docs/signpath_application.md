@@ -48,9 +48,8 @@ SignPath 通过后提供：
 然后在 GitHub 仓库设置：
 
 - Secret: `SIGNPATH_API_TOKEN`
-- Variables: `LIBMPV_URL`, `LIBMPV_SHA256`
 
-把 `release.yml` 的“upload unsigned”步骤替换为 SignPath 签名请求，人工批准后下载已签名产物。
+把 `release.yml` 的 unsigned 上传步骤替换为 SignPath 签名请求，人工批准后下载已签名产物。
 
 ## 当前仓库状态
 
@@ -60,6 +59,5 @@ SignPath 通过后提供：
 - `LICENSE`：完整 GPL-3.0 文本
 - GitHub Actions：`ci.yml` + `release.yml`
 - 待办：
-  - 创建 `v0.9.0` Release 并上传 exe/zip/libmpv；
-  - 配置 `LIBMPV_URL`/`LIBMPV_SHA256`；
+  - 打 `v0.9.0` tag，让 `release.yml` 自动生成 Release；
   - 提交 SignPath 申请。

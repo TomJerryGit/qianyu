@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-unsigned:
@@ -24,52 +24,69 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install PySide6-Essentials==6.8.3 python-mpv mutagen Pillow cryptography imageio-ffmpeg pyinstaller
 
-      - name: Fetch libmpv (pinned)
-        shell: pwsh
-        env:
-          LIBMPV_URL: ${{ vars.LIBMPV_URL }}
-          LIBMPV_SHA256: ${{ vars.LIBMPV_SHA256 }}
+      - name: Install packaging tools
         run: |
-          if (-not $env:LIBMPV_URL) { throw "Set repository variable LIBMPV_URL to a pinned libmpv-2.dll asset." }
-          Invoke-WebRequest -Uri $env:LIBMPV_URL -OutFile libmpv-2.dll
-          $hash = (Get-FileHash libmpv-2.dll -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($env:LIBMPV_SHA256 -and $hash -ne $env:LIBMPV_SHA256.ToLowerInvariant()) {
-            throw "libmpv SHA256 mismatch: $hash"
-          }
+          choco install innosetup --no-progress -y
+          choco install 7zip --no-progress -y
+
+      - name: Fetch pinned libmpv
+        shell: pwsh
+        run: |
+          $url = "https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20261018/mpv-dev-x86_64-20261018-git-01e2533f31.7z"
+          $expected = "d7f5621f42b6e161fe032df914a10bdece28a89df3e57c6c3e16a5a250929b5e"
+          Invoke-WebRequest -Uri $url -OutFile mpv-dev.7z
+          $hash = (Get-FileHash mpv-dev.7z -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($hash -ne $expected) { throw "libmpv archive SHA256 mismatch: $hash" }
+          & "C:\Program Files\7-Zip\7z.exe" e mpv-dev.7z libmpv-2.dll -o. -y
+          if (-not (Test-Path libmpv-2.dll)) { throw "libmpv-2.dll not found in archive" }
 
       - name: Build application
         run: |
           python -m PyInstaller --noconfirm --clean --distpath dist-pyside6 --workpath build-pyside6 packaging\qianyu-pyside6.spec
 
-      - name: Install Inno Setup
-        run: choco install innosetup --no-progress -y
-
-      - name: Build installer
+      - name: Build installer and portable zip
         shell: pwsh
         run: |
           if (Test-Path dist) { Remove-Item dist -Recurse -Force }
           Copy-Item dist-pyside6 dist -Recurse
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" packaging\qianyu.iss
+          Compress-Archive -Path dist\QianYu\* -DestinationPath dist\QianYu-0.9.0-portable.zip -CompressionLevel Optimal
 
       - name: Checksums
         shell: pwsh
         run: |
-          Get-FileHash dist\QianYu\QianYu.exe, dist\installer\QianYu-0.9.0-setup.exe -Algorithm SHA256 |
+          Get-FileHash dist\QianYu\QianYu.exe, dist\installer\QianYu-0.9.0-setup.exe, dist\QianYu-0.9.0-portable.zip -Algorithm SHA256 |
             ForEach-Object { "$($_.Hash.ToLowerInvariant())  $(Split-Path $_.Path -Leaf)" } |
             Set-Content dist\SHA256SUMS.txt
 
-      - name: Upload unsigned artifacts
+      - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4
         with:
           name: qianyu-unsigned
           path: |
             dist\QianYu\QianYu.exe
             dist\installer\QianYu-0.9.0-setup.exe
+            dist\QianYu-0.9.0-portable.zip
             dist\SHA256SUMS.txt
 
-      # After SignPath Foundation approval, replace the upload-only flow with:
-      # 1. upload the unsigned artifact to SignPath,
-      # 2. submit a signing request,
-      # 3. wait for manual approval,
-      # 4. download the signed artifact and publish it.
-      # Do not sign with a self-signed certificate for public releases.
+      - name: Publish prerelease
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $assets = @(
+            "dist\QianYu\QianYu.exe",
+            "dist\installer\QianYu-0.9.0-setup.exe",
+            "dist\QianYu-0.9.0-portable.zip",
+            "libmpv-2.dll",
+            "dist\SHA256SUMS.txt"
+          )
+          gh release view $tag 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag @assets --clobber
+          } else {
+            gh release create $tag @assets --title "QianYu $tag" `
+              --notes "QianYu 0.9.0 RC. Unsigned until SignPath Foundation signing is approved." `
+              --prerelease
+          }
