@@ -14,6 +14,7 @@ param(
     [string]$Repo = "TomJerryGit/qianyu",
     [string]$Key = "D:\qianyu\tools\ssh\qianyu_ed25519",
     [string]$Token = $env:GITHUB_TOKEN,
+    [switch]$AssumedAdded,
     [switch]$SkipPush
 )
 
@@ -51,8 +52,10 @@ if ($Token) {
     }
 } else {
     Write-Host "No GITHUB_TOKEN provided. Add the key manually in GitHub Settings -> SSH and GPG keys."
-    Write-Host "Then run this script again with -SkipPush:`$false`."
-    exit 0
+    if (-not $AssumedAdded) {
+        Write-Host "After adding it, run again with -AssumedAdded."
+        exit 0
+    }
 }
 
 $env:GIT_SSH_COMMAND = "`"$ssh`" -i `"$Key`" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
