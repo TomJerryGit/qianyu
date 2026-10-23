@@ -36,11 +36,13 @@ from .lyrics_editor import LyricsEditorDialog
 from .mini_player import MiniPlayer
 from .now_playing import NowPlayingPage
 from .radio_dialog import RadioDialog
+from .podcast_dialog import PodcastDialog
 from .tag_dialog import TagEditDialog
 from .theme_color import dominant_color
 from ..core.cue import parse_cue
 from ..core.metadata import fetch_cover, lookup_recording
 from ..core.radio import RadioStation
+from ..core.podcast import Episode
 from ..core.tagging import write_tags
 from .settings_dialog import SettingsDialog
 from .track_model import TrackTableModel
@@ -412,6 +414,7 @@ class MainWindow(QMainWindow):
 
         online_menu = self.menuBar().addMenu("在线")
         online_menu.addAction("网络电台…", self._show_radio)
+        online_menu.addAction("播客…", self._show_podcasts)
         online_menu.addAction("打开网络流…", self._open_stream)
 
         playback = self.menuBar().addMenu("播放")
@@ -1553,6 +1556,22 @@ class MainWindow(QMainWindow):
             return
         self._play_radio(RadioStation(name=url, url=url))
 
+    def _show_podcasts(self) -> None:
+        dialog = PodcastDialog(self)
+        dialog.play_requested.connect(self._play_episode)
+        dialog.exec()
+
+    def _play_episode(self, episode: Episode) -> None:
+        track = Track(
+            path=episode.url,
+            title=episode.title,
+            artist=episode.podcast_name,
+            album="播客",
+            duration=episode.duration or 0.0,
+            cover="",
+        )
+        self._play_online_track(track, f"播客：{episode.title}")
+
     def _play_radio(self, station: RadioStation) -> None:
         track = Track(
             path=station.url,
@@ -1562,6 +1581,9 @@ class MainWindow(QMainWindow):
             duration=0.0,
             cover="",
         )
+        self._play_online_track(track, f"网络电台：{station.name}")
+
+    def _play_online_track(self, track: Track, status: str) -> None:
         self._cue_tracks = None
         self._cue_sheet = None
         self._current = track
@@ -1572,11 +1594,11 @@ class MainWindow(QMainWindow):
         self._progress.setValue(0)
         self._time.setText("00:00 / 00:00")
         try:
-            self._engine.play(station.url)
+            self._engine.play(track.path)
         except Exception as exc:
-            self._status.showMessage(f"网络流播放失败：{exc}")
+            self._status.showMessage(f"在线播放失败：{exc}")
             return
-        self._status.showMessage(f"网络电台：{station.name}")
+        self._status.showMessage(status)
 
     def _open_video_dialog(self) -> None:
         path, _ = QFileDialog.getOpenFileName(

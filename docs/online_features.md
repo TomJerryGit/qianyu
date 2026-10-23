@@ -39,6 +39,13 @@
 - 主菜单「在线 → 打开网络流…」。
 - 支持 HTTP/HTTPS 音频/视频流，交给 libmpv。
 
+### 3. 播客
+
+- `core/podcast.py`：iTunes Search API 搜索播客；RSS 解析单集、时长、发布时间。
+- `ui/podcast_dialog.py`：搜索播客 → 选择播客 → 加载单集 → 双击/按钮播放。
+- 主菜单「在线 → 播客…」。
+- 支持 Ximalaya、小宇宙、Anchor 等公开 RSS feed。
+
 ### 3. 已有在线能力
 
 - MusicBrainz 元数据补全；
@@ -54,10 +61,11 @@
 - 显示当前曲目（ICY metadata）；
 - 断流自动重连。
 
-### P2 播客 / RSS
+### P2 播客增强
 
-- iTunes Search API 搜索播客；
-- RSS 解析、单集播放、进度记忆；
+- 单集进度记忆、已听标记；
+- 订阅/收藏播客；
+- 下载单集到本地缓存；
 - 播客与音乐分库。
 
 ### P3 播放记录同步

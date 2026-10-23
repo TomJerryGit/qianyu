@@ -18,6 +18,7 @@
 | 收藏/最近播放 | 媒体库筛选 + 右键收藏 | SQLite `favorite/play_count/last_played`，最近/最常/未播放/最近添加 |
 | 批量标签 | `ui/batch_tag_dialog.py` | 多选后批量改艺术家/专辑，逐个写文件+DB |
 | 网络电台 | `core/radio.py` + `ui/radio_dialog.py` | Radio Browser 搜索/国家筛选，后台线程，mpv 播放 |
+| 播客 | `core/podcast.py` + `ui/podcast_dialog.py` | iTunes 搜索 + RSS 单集解析，mpv 播放 |
 | 网络流 | 主菜单“在线 → 打开网络流…” | HTTP/HTTPS 音频/视频流 |
 | 音频指纹去重 | `core/fingerprint.py`（fpcalc/Chromaprint + PCM 包络回退） | 可选深度去重，相似度 ≥90%；无 fpcalc 时用内置离线包络指纹 |
 | 在线封面 | `core/metadata.py` + 右键“获取在线封面” | 封面存档，写回封面字段 |
@@ -114,6 +115,8 @@
 
 **Round 31 新增**：Radio Browser 网络电台搜索/播放、收藏与网络流地址播放；单测增至 36。
 
+**Round 32 新增**：iTunes 播客搜索 + RSS 单集解析/播放；单测增至 39。
+
 **Round 31 新增**：Radio Browser 网络电台搜索/播放、网络流地址播放；单测增至 35。
 
 **实测数据（`spike/ui_smoke.py`）**：
@@ -209,7 +212,7 @@ MINI True single_tone
 2. **封面只验证了同名 `cover.jpg`**：内嵌 APIC/FLAC picture/MP4 covr 的提取代码已写，但未用真实带封面的 MP3/FLAC 验证。
 3. **PyQt5 GPL**：发布包默认已切 PySide6 6.8.3 / Python 3.11；PyQt5 仅保留 Python 3.8 回退。LGPL 合规清单仍待整理。
 4. **Python 3.8**：本机 3.8.9，已 EOL；1.0 前升 3.11/3.12。
-5. **测试覆盖有限**：36 个单测 + 1 个 UI 冒烟 + 1 个基准；有 gapless/EQ 金标准，但无浸泡/兼容矩阵。
+5. **测试覆盖有限**：39 个单测 + 1 个 UI 冒烟 + 1 个基准；有 gapless/EQ 金标准，但无浸泡/兼容矩阵。
 6. **安装包/更新**：`install.ps1` 已用 PySide6 包完成真实安装/启动/卸载；Inno 6.7.3 已编译 `dist\installer\QianYu-0.9.0-setup.exe`（61.2 MB，PySide6/6.8.3）。生产安装器使用 `CreateUninstallRegKey=no` + HKCU best effort 卸载项，注册表被拒时安装不再回滚；真实桌面验收仍待做。manifest 支持 Ed25519，安装包本身未签名。
 7. **性能基线有数据但未入门禁**：1 万曲搜索 17.7–28 ms、模型刷新 64 ms；100 首队列可完成，耗时受负载波动；尚未在 CI 设阈值。
 8. **桌面歌词暂无锁定/鼠标穿透**；需要真机验证多屏。
