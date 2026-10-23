@@ -56,6 +56,9 @@ jobs:
         run: |
           if (Test-Path dist) { Remove-Item dist -Recurse -Force }
           Copy-Item dist-pyside6 dist -Recurse
+          foreach ($name in @("LICENSE", "COPYRIGHT", "NOTICE", "THIRD_PARTY_NOTICES.md", "SOURCE_OFFER.md")) {
+            Copy-Item $name "dist\QianYu\$name" -Force
+          }
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" packaging\qianyu.iss
           Compress-Archive -Path dist\QianYu\* -DestinationPath dist\QianYu-0.9.0-portable.zip -CompressionLevel Optimal
 

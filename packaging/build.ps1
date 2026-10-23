@@ -19,6 +19,15 @@ if (-not $SkipApp) {
 }
 
 if ($Installer) {
+    $appDir = Join-Path $root "dist\QianYu"
+    if (Test-Path $appDir) {
+        foreach ($name in @("LICENSE", "COPYRIGHT", "NOTICE", "THIRD_PARTY_NOTICES.md", "SOURCE_OFFER.md")) {
+            $source = Join-Path $root $name
+            if (Test-Path $source) {
+                Copy-Item $source (Join-Path $appDir $name) -Force
+            }
+        }
+    }
     $iscc = Get-Command iscc -ErrorAction SilentlyContinue
     $isccPath = $null
     if ($iscc) {
