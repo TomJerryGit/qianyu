@@ -19,7 +19,8 @@
 - **视频模式 MVP**：本地/URL、拖放、传输控制、全屏、硬解、字幕/编码/样式、音轨/字幕轨、截图、续播、文件夹队列、章节、书签、比例/旋转/倍速/逐帧/A-B、色彩调整、HDR 参数、音频延迟、mpv 鼠标手势、全屏/可选窗口手势层（1.0 预览）。
 - 更新检查：manifest 版本比较 + 可选 Ed25519 签名 + SHA-256 校验下载；下载后可退出并运行安装包（自动替换待做）。
 - 日志/崩溃：轮转日志、`faulthandler`、异常钩子与崩溃提示。
-- 工程：33 个单元测试、无头 UI 冒烟、1 万曲/100 首基准、GitHub Actions 骨架。
+- **在线**：网络电台搜索/播放（Radio Browser）、HTTP/HTTPS 网络流、在线歌词/封面/元数据补全。
+- 工程：35 个单元测试、无头 UI 冒烟、1 万曲/100 首基准、GitHub Actions 骨架。
 
 ## 运行
 
@@ -129,6 +130,7 @@ tests/unit/      单元测试
 - [生产发布链](docs/release_chain.md)
 - [本地生产验收记录](docs/acceptance_2026-10-18.md)
 - [下载页](DOWNLOAD.md)
+- [在线功能路线](docs/online_features.md)
 - [代码签名政策](CODE_SIGNING_POLICY.md)
 - [SignPath Foundation 申请清单](docs/signpath_application.md)
 - [GitHub 发布与 SignPath 步骤](docs/github_publish.md)

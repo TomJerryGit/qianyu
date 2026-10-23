@@ -14,7 +14,7 @@ from ..qt import DIALOG_ACCEPTED, QColor, QObject, QProcess, QSize, Qt, QThread,
 from ..qt import QDesktopServices, QIcon, QKeySequence, QPixmap
 from ..qt import (
     QAbstractItemView, QAction, QApplication, QComboBox, QDialog, QFileDialog, QHBoxLayout,
-    QLabel, QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QMenu,
+    QInputDialog, QLabel, QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QMenu,
     QMessageBox, QPushButton, QShortcut, QSlider, QSplitter, QStackedWidget,
     QStyle, QSystemTrayIcon, QTableView, QVBoxLayout, QWidget, QHeaderView,
 )
@@ -35,10 +35,12 @@ from .eq_dialog import EqualizerDialog
 from .lyrics_editor import LyricsEditorDialog
 from .mini_player import MiniPlayer
 from .now_playing import NowPlayingPage
+from .radio_dialog import RadioDialog
 from .tag_dialog import TagEditDialog
 from .theme_color import dominant_color
 from ..core.cue import parse_cue
 from ..core.metadata import fetch_cover, lookup_recording
+from ..core.radio import RadioStation
 from ..core.tagging import write_tags
 from .settings_dialog import SettingsDialog
 from .track_model import TrackTableModel
@@ -407,6 +409,10 @@ class MainWindow(QMainWindow):
         quit_action.setShortcut(QKeySequence.Quit)
         quit_action.triggered.connect(self._quit)
         file_menu.addAction(quit_action)
+
+        online_menu = self.menuBar().addMenu("在线")
+        online_menu.addAction("网络电台…", self._show_radio)
+        online_menu.addAction("打开网络流…", self._open_stream)
 
         playback = self.menuBar().addMenu("播放")
         playback.addAction("播放/暂停", self._toggle)
@@ -1528,6 +1534,49 @@ class MainWindow(QMainWindow):
             ranges=[(item.start, item.end) for item in sheet.tracks],
         )
         self._status.showMessage(f"CUE：{sheet.title} / {cue.title}")
+
+    def _show_radio(self) -> None:
+        dialog = RadioDialog(self)
+        dialog.play_requested.connect(self._play_radio)
+        dialog.exec()
+
+    def _open_stream(self) -> None:
+        url, ok = QInputDialog.getText(
+            self, "打开网络流", "请输入 HTTP/HTTPS 音频或视频流地址：",
+            QLineEdit.Normal, "",
+        )
+        if not ok:
+            return
+        url = url.strip()
+        if not url.lower().startswith(("http://", "https://")):
+            QMessageBox.warning(self, "打开网络流", "只支持 http:// 或 https:// 地址。")
+            return
+        self._play_radio(RadioStation(name=url, url=url))
+
+    def _play_radio(self, station: RadioStation) -> None:
+        track = Track(
+            path=station.url,
+            title=station.name,
+            artist=station.country,
+            album=station.tags,
+            duration=0.0,
+            cover="",
+        )
+        self._cue_tracks = None
+        self._cue_sheet = None
+        self._current = track
+        self._set_now_playing(track)
+        self._lyrics = []
+        self._lyrics_view.clear()
+        self._update_now_page()
+        self._progress.setValue(0)
+        self._time.setText("00:00 / 00:00")
+        try:
+            self._engine.play(station.url)
+        except Exception as exc:
+            self._status.showMessage(f"网络流播放失败：{exc}")
+            return
+        self._status.showMessage(f"网络电台：{station.name}")
 
     def _open_video_dialog(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
