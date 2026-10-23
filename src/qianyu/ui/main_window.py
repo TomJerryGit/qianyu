@@ -40,6 +40,7 @@ from .now_playing import NowPlayingPage
 from .radio_dialog import RadioDialog
 from .podcast_dialog import PodcastDialog
 from .remote_dialog import RemoteDialog, make_client
+from .radio_window import RadioWindow
 from .tag_dialog import TagEditDialog
 from .theme_color import dominant_color
 from ..core.cue import parse_cue
@@ -49,6 +50,7 @@ from ..core.podcast import Episode
 from ..core.podcast_cache import PodcastCache
 from ..core.subsonic import RemoteSong
 from ..core.scrobble import ListenBrainzScrobbler
+from ..core.secure_store import SecretStore
 from ..core.tagging import write_tags
 from .settings_dialog import SettingsDialog
 from .track_model import TrackTableModel
@@ -96,6 +98,11 @@ class MainWindow(QMainWindow):
     def __init__(self, config: Config, engine: MpvEngine | None = None, data_dir: str | Path | None = None):
         super().__init__()
         self._config = config
+        self._secrets = SecretStore(config)
+        try:
+            self._secrets.migrate(["listenbrainz_token", "subsonic_password"])
+        except Exception:
+            pass
         base = Path(data_dir) if data_dir else Path.home() / ".qianyu_media"
         try:
             base.mkdir(parents=True, exist_ok=True)
@@ -119,6 +126,7 @@ class MainWindow(QMainWindow):
         self._radio_station: RadioStation | None = None
         self._radio_retries = 0
         self._radio_stream_title = ""
+        self._radio_window: RadioWindow | None = None
         self._lyrics = []
         self._lyrics_index = -1
         self._lyrics_offset_ms = 0
@@ -428,6 +436,7 @@ class MainWindow(QMainWindow):
 
         online_menu = self.menuBar().addMenu("在线")
         online_menu.addAction("网络电台…", self._show_radio)
+        online_menu.addAction("经典电台窗口", self._show_radio_window)
         online_menu.addAction("播客…", self._show_podcasts)
         online_menu.addAction("远程媒体库…", self._show_remote)
         online_menu.addAction("打开网络流…", self._open_stream)
@@ -450,7 +459,8 @@ class MainWindow(QMainWindow):
         tools.addAction("取消文件关联", self._unregister_association)
 
         view = self.menuBar().addMenu("视图")
-        view.addAction("正在播放页", self._show_now_page)
+        view.addAction("经典音乐模式（全屏播放页）", self._show_now_page)
+        view.addAction("经典电台模式", self._show_radio_window)
         view.addAction("均衡器", self._show_eq)
         view.addAction("设置…", self._show_settings)
         self._desktop_action = QAction("桌面歌词", self)
@@ -1018,6 +1028,8 @@ class MainWindow(QMainWindow):
         self._podcast_url = None
         self._radio_station = None
         self._radio_stream_title = ""
+        if self._radio_window is not None:
+            self._radio_window.hide()
         self._scrobbler.track_started(track)
         self._cue_tracks = None
         self._cue_sheet = None
@@ -1212,6 +1224,8 @@ class MainWindow(QMainWindow):
         self._engine.stop()
         self._progress.setValue(0)
         self._time.setText("00:00 / 00:00")
+        if self._radio_window is not None:
+            self._radio_window.set_stopped()
 
     def _next(self) -> None:
         if self._engine.queue:
@@ -1294,6 +1308,8 @@ class MainWindow(QMainWindow):
             if title and title != self._radio_stream_title:
                 self._radio_stream_title = title
                 self._status.showMessage(f"{self._radio_station.name} — {title}")
+                if self._radio_window is not None:
+                    self._radio_window.set_icy_title(title)
 
     def _update_desktop_lyrics(self, index: int) -> None:
         if self._desktop_lyrics is None or not self._desktop_lyrics.isVisible():
@@ -1606,6 +1622,43 @@ class MainWindow(QMainWindow):
         dialog.play_requested.connect(self._play_radio)
         dialog.exec()
 
+    def _show_radio_window(self) -> None:
+        if self._radio_station is None:
+            self._show_radio()
+            return
+        self._ensure_radio_window()
+        self._radio_window.show()
+        self._radio_window.raise_()
+
+    def _ensure_radio_window(self) -> None:
+        if self._radio_window is not None:
+            return
+        window = RadioWindow(self)
+        window.play_requested.connect(self._play_radio)
+        window.stop_requested.connect(self._stop_playback)
+        window.volume_changed.connect(lambda value: setattr(self._engine, "volume", value))
+        window.closed.connect(window.hide)
+        self._radio_window = window
+
+    def _radio_presets(self) -> list[RadioStation]:
+        result = []
+        seen = set()
+        for key in ("radio_recent", "radio_favorites"):
+            for item in self._config.get(key, []) or []:
+                station = RadioStation.from_dict(item)
+                if station is not None and station.url not in seen:
+                    result.append(station)
+                    seen.add(station.url)
+        return result[:6]
+
+    def _show_radio_view(self, station: RadioStation) -> None:
+        self._ensure_radio_window()
+        self._radio_window.set_presets(self._radio_presets())
+        self._radio_window.set_station(station)
+        self._radio_window.set_volume(self._engine.volume)
+        self._radio_window.show()
+        self._radio_window.raise_()
+
     def _open_stream(self) -> None:
         url, ok = QInputDialog.getText(
             self, "打开网络流", "请输入 HTTP/HTTPS 音频或视频流地址：",
@@ -1708,8 +1761,11 @@ class MainWindow(QMainWindow):
         self._radio_station = station
         self._radio_retries = 0
         self._radio_stream_title = ""
+        self._show_radio_view(station)
 
     def _play_online_track(self, track: Track, status: str) -> None:
+        if self._radio_window is not None:
+            self._radio_window.hide()
         self._scrobbler.stop()
         self._save_podcast_progress()
         self._podcast_url = None
@@ -1772,6 +1828,8 @@ class MainWindow(QMainWindow):
                 self._video.close()
             if self._now_page is not None:
                 self._now_page.close()
+            if self._radio_window is not None:
+                self._radio_window.close()
 
     def closeEvent(self, event) -> None:
         if not self._force_quit and self._tray is not None and bool(self._config.get("close_to_tray", True)):

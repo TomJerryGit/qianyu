@@ -4,6 +4,16 @@
 
 基于 **libmpv** 的 Windows 音乐/视频播放器。**1.0 发布包默认使用 PySide6/Qt6（LGPL）**；Python 3.8 的 PyQt5 构建保留为兼容回退。
 
+![经典电台模式](docs/images/radio_window.png)
+
+三种使用形态：
+
+- **音乐**：经典媒体库 + 歌词 + 播放队列；全屏正在播放页显示大封面/歌词。
+- **电台**：播放网络电台时自动打开经典台式收音机窗口（调谐旋钮、预设、ON AIR、ICY 当前曲目）。
+- **视频**：独立经典视频窗口，视频画布 + 底部控制栏 + 全屏。
+
+详见 [docs/ui_modes.md](docs/ui_modes.md)。
+
 ## 0.9 已实现
 
 - 本地媒体库：SQLite + mutagen，扫描/增量/搜索/标签/封面（同名封面或内嵌）。
@@ -20,7 +30,7 @@
 - 更新检查：manifest 版本比较 + 可选 Ed25519 签名 + SHA-256 校验下载；下载后可退出并运行安装包（自动替换待做）。
 - 日志/崩溃：轮转日志、`faulthandler`、异常钩子与崩溃提示。
 - **在线**：网络电台搜索/播放（Radio Browser）、播客搜索/RSS/订阅/下载缓存、ListenBrainz Scrobbling（可选）、Navidrome/Subsonic 远程媒体库、HTTP/HTTPS 网络流、在线歌词/封面/元数据补全。
-- 工程：50 个单元测试、无头 UI 冒烟、1 万曲/100 首基准、GitHub Actions 骨架。
+- 工程：52 个单元测试、无头 UI 冒烟、1 万曲/100 首基准、GitHub Actions 骨架。
 
 ## 运行
 
@@ -130,6 +140,7 @@ tests/unit/      单元测试
 - [生产发布链](docs/release_chain.md)
 - [本地生产验收记录](docs/acceptance_2026-10-18.md)
 - [下载页](DOWNLOAD.md)
+- [三种使用形态](docs/ui_modes.md)
 - [在线功能路线](docs/online_features.md)
 - [在线内容与版权合规](docs/online_compliance.md)
 - [版权声明](COPYRIGHT)

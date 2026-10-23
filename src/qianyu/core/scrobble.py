@@ -15,6 +15,7 @@ import urllib.request
 from dataclasses import dataclass
 
 from .models import Track
+from .secure_store import SecretStore
 
 LISTENBRAINZ_URL = "https://api.listenbrainz.org/1/submit-listens"
 USER_AGENT = "QianYu/0.9 (local media player)"
@@ -96,11 +97,14 @@ class _ListenState:
 class ListenBrainzScrobbler:
     def __init__(self, config):
         self._config = config
+        self._secrets = SecretStore(config)
+        self._token = self._secrets.get("listenbrainz_token")
         self._state: _ListenState | None = None
         self._submitted = False
         self._lock = threading.Lock()
 
     def reload(self) -> None:
+        self._token = self._secrets.get("listenbrainz_token")
         self.stop()
 
     def track_started(self, track: Track | None) -> None:
@@ -116,7 +120,7 @@ class ListenBrainzScrobbler:
     def tick(self, track: Track | None, position: float, duration: float) -> None:
         if track is None or not bool(self._config.get("listenbrainz_enabled", False)):
             return
-        token = str(self._config.get("listenbrainz_token", "") or "").strip()
+        token = self._token
         if not token or not is_scrobbleable_track(track):
             return
         if not should_scrobble(float(duration or 0), float(position or 0)):

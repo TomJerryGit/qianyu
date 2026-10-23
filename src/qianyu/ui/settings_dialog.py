@@ -13,6 +13,7 @@ from ..qt import (
 )
 
 from ..config import Config
+from ..core.secure_store import SecretStore
 
 
 class SettingsDialog(QDialog):
@@ -20,6 +21,7 @@ class SettingsDialog(QDialog):
         super().__init__(parent)
         self._config = config
         self._engine = engine
+        self._secrets = SecretStore(config)
         self.setWindowTitle("设置")
         self.setMinimumWidth(520)
         self._build()
@@ -78,7 +80,7 @@ class SettingsDialog(QDialog):
         self._listenbrainz.setChecked(bool(self._config.get("listenbrainz_enabled", False)))
         layout.addWidget(self._listenbrainz)
         layout.addWidget(QLabel("ListenBrainz 用户 token"))
-        self._listenbrainz_token = QLineEdit(str(self._config.get("listenbrainz_token", "")))
+        self._listenbrainz_token = QLineEdit(self._secrets.get("listenbrainz_token"))
         self._listenbrainz_token.setEchoMode(QLineEdit.Password)
         self._listenbrainz_token.setPlaceholderText("在 listenbrainz.org/settings 获取")
         layout.addWidget(self._listenbrainz_token)
@@ -94,7 +96,7 @@ class SettingsDialog(QDialog):
         self._subsonic_user = QLineEdit(str(self._config.get("subsonic_user", "")))
         layout.addWidget(self._subsonic_user)
         layout.addWidget(QLabel("远程媒体库密码（仅保存在本机）"))
-        self._subsonic_password = QLineEdit(str(self._config.get("subsonic_password", "")))
+        self._subsonic_password = QLineEdit(self._secrets.get("subsonic_password"))
         self._subsonic_password.setEchoMode(QLineEdit.Password)
         layout.addWidget(self._subsonic_password)
         remote_note = QLabel("仅支持 Subsonic API（Navidrome/Airsonic/Gonic 等）；Jellyfin 需独立适配。")
@@ -157,10 +159,10 @@ class SettingsDialog(QDialog):
         self._config.set("update_public_key", self._update_key.text().strip())
         self._config.set("podcast_cache_limit_mb", self._podcast_cache_limit.value())
         self._config.set("listenbrainz_enabled", self._listenbrainz.isChecked())
-        self._config.set("listenbrainz_token", self._listenbrainz_token.text().strip())
+        self._secrets.set("listenbrainz_token", self._listenbrainz_token.text().strip())
         self._config.set("subsonic_url", self._subsonic_url.text().strip())
         self._config.set("subsonic_user", self._subsonic_user.text().strip())
-        self._config.set("subsonic_password", self._subsonic_password.text())
+        self._secrets.set("subsonic_password", self._subsonic_password.text())
         try:
             self._engine.set_replaygain(str(self._replaygain.currentData()))
             self._config.set("replaygain", str(self._replaygain.currentData()))

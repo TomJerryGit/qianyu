@@ -10,13 +10,15 @@ from ..qt import (
     QVBoxLayout, Qt, pyqtSignal,
 )
 from ..core.subsonic import RemoteSong, SubsonicClient, SubsonicError
+from ..core.secure_store import SecretStore
 
 
 def make_client(config) -> SubsonicClient:
+    secret = SecretStore(config)
     return SubsonicClient(
         str(config.get("subsonic_url", "")),
         str(config.get("subsonic_user", "")),
-        str(config.get("subsonic_password", "")),
+        secret.get("subsonic_password"),
     )
 
 

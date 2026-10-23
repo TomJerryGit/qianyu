@@ -68,6 +68,7 @@
 - 兼容 Navidrome、Airsonic、Gonic 等 Subsonic 服务器；
 - Jellyfin 使用独立 API，后续单独适配；
 - 当前为独立远程搜索面板，本地/远程统一搜索在下一阶段。
+- 密码使用 Windows DPAPI 加密后保存在本机配置；API 只发送 Subsonic token。
 
 ### 6. 已有在线能力
 
