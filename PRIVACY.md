@@ -24,6 +24,10 @@ online action:
 - **Podcast RSS feeds** — the feed URL is fetched to list episodes.
 - **ListenBrainz** — optional scrobbling when enabled by the user. A user token
   is stored locally in the settings file and sent only to ListenBrainz.
+- **Navidrome / Subsonic server** — only when the user configures a remote
+  library. The server address, username and password are stored locally; the
+  password is used to derive a short-lived Subsonic token and is never sent in
+  clear text by API requests. Remote audio is streamed from that server.
 
 No audio files and no local library contents are uploaded by these
 requests. The services receive the query text and normal HTTP metadata

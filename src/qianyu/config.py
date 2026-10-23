@@ -26,6 +26,9 @@ DEFAULTS = {
     "podcast_cache_limit_mb": 2048,
     "listenbrainz_enabled": False,
     "listenbrainz_token": "",
+    "subsonic_url": "",
+    "subsonic_user": "",
+    "subsonic_password": "",
     "window": {"w": 1180, "h": 760},
 }
 

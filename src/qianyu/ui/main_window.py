@@ -39,6 +39,7 @@ from .mini_player import MiniPlayer
 from .now_playing import NowPlayingPage
 from .radio_dialog import RadioDialog
 from .podcast_dialog import PodcastDialog
+from .remote_dialog import RemoteDialog, make_client
 from .tag_dialog import TagEditDialog
 from .theme_color import dominant_color
 from ..core.cue import parse_cue
@@ -46,6 +47,7 @@ from ..core.metadata import fetch_cover, lookup_recording
 from ..core.radio import RadioStation
 from ..core.podcast import Episode
 from ..core.podcast_cache import PodcastCache
+from ..core.subsonic import RemoteSong
 from ..core.scrobble import ListenBrainzScrobbler
 from ..core.tagging import write_tags
 from .settings_dialog import SettingsDialog
@@ -427,6 +429,7 @@ class MainWindow(QMainWindow):
         online_menu = self.menuBar().addMenu("在线")
         online_menu.addAction("网络电台…", self._show_radio)
         online_menu.addAction("播客…", self._show_podcasts)
+        online_menu.addAction("远程媒体库…", self._show_remote)
         online_menu.addAction("打开网络流…", self._open_stream)
 
         playback = self.menuBar().addMenu("播放")
@@ -1620,6 +1623,28 @@ class MainWindow(QMainWindow):
         dialog = PodcastDialog(self, self._config, self._podcast_cache)
         dialog.play_requested.connect(self._play_episode)
         dialog.exec()
+
+    def _show_remote(self) -> None:
+        dialog = RemoteDialog(self._config, self)
+        dialog.play_requested.connect(self._play_remote_song)
+        dialog.exec()
+
+    def _play_remote_song(self, song: RemoteSong) -> None:
+        client = make_client(self._config)
+        try:
+            url = client.stream_url(song)
+        except Exception as exc:
+            self._status.showMessage(f"远程播放失败：{exc}")
+            return
+        track = Track(
+            path=url,
+            title=song.title,
+            artist=song.artist,
+            album=song.album or "远程媒体库",
+            duration=song.duration,
+            cover="",
+        )
+        self._play_online_track(track, f"远程：{song.title}")
 
     def _play_episode(self, episode: Episode) -> None:
         cached = self._podcast_cache.get(episode.url)
