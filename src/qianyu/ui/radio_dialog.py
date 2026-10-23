@@ -1,9 +1,14 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: 2026 TomJerryGit and QianYu contributors
+# SPDX-License-Identifier: GPL-3.0-only
 """Internet radio browser dialog."""
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from ..qt import (
-    QComboBox, QDialog, QHBoxLayout, QHeaderView, QLabel, QLineEdit,
+    QComboBox, QDialog, QFileDialog, QHBoxLayout, QHeaderView, QLabel, QLineEdit,
     QMessageBox, QPushButton, QTableWidget, QTableWidgetItem, QThread,
     QVBoxLayout, QAbstractItemView, Qt, pyqtSignal,
 )
@@ -54,7 +59,7 @@ class RadioDialog(QDialog):
         top.addWidget(self._button)
         layout.addLayout(top)
 
-        self._status = QLabel("输入名称后搜索；双击电台开始播放。")
+        self._status = QLabel("数据来源 Radio Browser；流媒体版权归各电台。输入名称后搜索。")
         self._status.setObjectName("stats")
         layout.addWidget(self._status)
 
@@ -78,12 +83,21 @@ class RadioDialog(QDialog):
         favorite.clicked.connect(self._toggle_favorite)
         favorites = QPushButton("我的收藏")
         favorites.clicked.connect(self._show_favorites)
+        recent = QPushButton("最近收听")
+        recent.clicked.connect(self._show_recent)
+        export = QPushButton("导出")
+        export.clicked.connect(self._export_favorites)
+        import_button = QPushButton("导入")
+        import_button.clicked.connect(self._import_favorites)
         play = QPushButton("播放")
         play.clicked.connect(self._play_selected)
         close = QPushButton("关闭")
         close.clicked.connect(self.reject)
         bottom.addWidget(favorite)
         bottom.addWidget(favorites)
+        bottom.addWidget(recent)
+        bottom.addWidget(export)
+        bottom.addWidget(import_button)
         bottom.addStretch(1)
         bottom.addWidget(play)
         bottom.addWidget(close)
@@ -154,6 +168,68 @@ class RadioDialog(QDialog):
         self._render_stations()
         self._status.setText(f"我的收藏：{len(self._stations)} 个电台。" if self._stations else "还没有收藏电台。")
 
+    def _recents(self) -> list[RadioStation]:
+        if self._config is None:
+            return []
+        result = []
+        for item in self._config.get("radio_recent", []) or []:
+            station = RadioStation.from_dict(item)
+            if station is not None:
+                result.append(station)
+        return result
+
+    def _record_recent(self, station: RadioStation) -> None:
+        if self._config is None:
+            return
+        recent = [item for item in self._recents() if item.url != station.url]
+        recent.insert(0, station)
+        self._config.set("radio_recent", [item.as_dict() for item in recent[:20]])
+
+    def _show_recent(self) -> None:
+        self._stations = self._recents()
+        self._render_stations()
+        self._status.setText(f"最近收听：{len(self._stations)} 个电台。" if self._stations else "还没有收听记录。")
+
+    def _export_favorites(self) -> None:
+        path, _selected = QFileDialog.getSaveFileName(
+            self, "导出电台收藏", "qianyu-radio-favorites.json", "JSON (*.json)"
+        )
+        if not path:
+            return
+        try:
+            Path(path).write_text(
+                json.dumps([item.as_dict() for item in self._favorites()],
+                           ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            self._status.setText(f"已导出收藏：{path}")
+        except OSError as exc:
+            QMessageBox.warning(self, "导出收藏", str(exc))
+
+    def _import_favorites(self) -> None:
+        path, _selected = QFileDialog.getOpenFileName(
+            self, "导入电台收藏", "", "JSON (*.json)"
+        )
+        if not path:
+            return
+        try:
+            raw = json.loads(Path(path).read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            QMessageBox.warning(self, "导入收藏", str(exc))
+            return
+        if not isinstance(raw, list):
+            QMessageBox.warning(self, "导入收藏", "文件格式不是电台收藏列表。")
+            return
+        existing = self._favorites()
+        seen = {item.url for item in existing}
+        for item in raw:
+            station = RadioStation.from_dict(item)
+            if station is not None and station.url not in seen:
+                existing.append(station)
+                seen.add(station.url)
+        self._set_favorites(existing)
+        self._status.setText(f"已导入收藏，共 {len(existing)} 个电台。")
+
     def _show_error(self, message: str) -> None:
         self._status.setText("搜索失败。")
         QMessageBox.warning(self, "网络电台", message)
@@ -163,7 +239,9 @@ class RadioDialog(QDialog):
         if not (0 <= row < len(self._stations)):
             self._status.setText("请先选择一个电台。")
             return
-        self.play_requested.emit(self._stations[row])
+        station = self._stations[row]
+        self._record_recent(station)
+        self.play_requested.emit(station)
 
     def closeEvent(self, event) -> None:
         if self._thread is not None and self._thread.isRunning():

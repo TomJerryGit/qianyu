@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: 2026 TomJerryGit and QianYu contributors
+# SPDX-License-Identifier: GPL-3.0-only
 """Cover-derived accent color for the Qt stylesheet."""
 from __future__ import annotations
 

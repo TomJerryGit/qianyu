@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: 2026 TomJerryGit and QianYu contributors
+# SPDX-License-Identifier: GPL-3.0-only
 """CUE sheet parser for single-file and multi-file album playback."""
 from __future__ import annotations
 

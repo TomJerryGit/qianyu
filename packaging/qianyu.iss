@@ -4,7 +4,8 @@
 
 #define AppName "浅语影音"
 #define AppVersion "0.9.0"
-#define AppPublisher "QianYuMedia"
+#define AppPublisher "TomJerryGit"
+#define AppCopyright "Copyright (C) 2026 TomJerryGit and QianYu contributors"
 #define AppExe "QianYu.exe"
 
 [Setup]
@@ -12,6 +13,7 @@ AppId={{7E2E6A1B-4B77-4A5B-9A5E-9E3A6C3E1B21}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher={#AppPublisher}
+AppCopyright={#AppCopyright}
 DefaultDirName={localappdata}\Programs\QianYu
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes

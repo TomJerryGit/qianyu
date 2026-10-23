@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: 2026 TomJerryGit and QianYu contributors
+# SPDX-License-Identifier: GPL-3.0-only
 """User configuration (JSON, atomic write, schema-tolerant)."""
 from __future__ import annotations
 

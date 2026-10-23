@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: 2026 TomJerryGit and QianYu contributors
+# SPDX-License-Identifier: GPL-3.0-only
 """Audio/video playback engine built on libmpv.
 
 The engine is UI-agnostic: it accepts commands and pushes plain callbacks.
@@ -104,6 +106,21 @@ class MpvEngine:
     @property
     def title(self) -> str:
         return str(self._mpv.media_title or "")
+
+    @property
+    def stream_title(self) -> str:
+        """ICY/stream metadata title, if libmpv exposes one."""
+        try:
+            metadata = self._mpv.metadata or {}
+        except Exception:
+            return ""
+        if not isinstance(metadata, dict):
+            return ""
+        for key in ("icy-title", "StreamTitle", "stream_title", "title"):
+            value = metadata.get(key)
+            if value:
+                return str(value).strip()
+        return ""
 
     @property
     def path(self) -> str:

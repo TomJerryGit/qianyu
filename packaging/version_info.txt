@@ -15,10 +15,12 @@ VSVersionInfo(
             StringTable(
                 "040904B0",
                 [
-                    StringStruct("CompanyName", "QianYu"),
+                    StringStruct("CompanyName", "TomJerryGit"),
                     StringStruct("FileDescription", "QianYu media player"),
                     StringStruct("FileVersion", "0.9.0"),
                     StringStruct("InternalName", "QianYu"),
+                    StringStruct("LegalCopyright", "Copyright (C) 2026 TomJerryGit and QianYu contributors"),
+                    StringStruct("LegalTrademarks", "QianYu"),
                     StringStruct("OriginalFilename", "QianYu.exe"),
                     StringStruct("ProductName", "QianYu"),
                     StringStruct("ProductVersion", "0.9.0"),

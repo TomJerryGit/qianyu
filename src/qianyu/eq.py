@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: 2026 TomJerryGit and QianYu contributors
+# SPDX-License-Identifier: GPL-3.0-only
 """Pure equalizer definitions (no Qt, no libmpv).
 
 Keeping this module dependency-free lets the settings UI and unit tests import

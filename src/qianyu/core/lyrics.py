@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: 2026 TomJerryGit and QianYu contributors
+# SPDX-License-Identifier: GPL-3.0-only
 """LRC lyrics parsing with encoding detection.
 
 Pure functions, no UI and no Qt, so they can be fuzzed and unit-tested.

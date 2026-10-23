@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: 2026 TomJerryGit and QianYu contributors
+# SPDX-License-Identifier: GPL-3.0-only
 """Optional ListenBrainz scrobbling.
 
 Only local music tracks are submitted. Streams, podcasts and radio are excluded.

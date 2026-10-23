@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: 2026 TomJerryGit and QianYu contributors
+# SPDX-License-Identifier: GPL-3.0-only
 """Per-user Windows file association for audio files.
 
 This does not hijack the default handler: it registers a ProgID and puts it in

@@ -1,0 +1,27 @@
+# NOTICE
+
+QianYu — 浅语影音  
+Copyright (C) 2026 TomJerryGit and QianYu contributors  
+SPDX-License-Identifier: GPL-3.0-only
+
+QianYu is an independent open-source project. It is not affiliated with,
+endorsed by, or sponsored by Apple, MusicBrainz, Radio Browser, ListenBrainz,
+Jellyfin, Navidrome, Spotify, NetEase, QQ Music, or any radio/podcast station.
+
+## Online data and content
+
+- Radio station directory data: Radio Browser (community project).
+- Podcast search data: Apple iTunes Search API; podcast audio is supplied by
+  the publisher's RSS feed.
+- Music metadata: MusicBrainz.
+- Lyrics: LRCLIB and user-provided local lyrics.
+- Cover art: Cover Art Archive, embedded tags, or user-provided files.
+- Scrobbling: ListenBrainz, only when the user enables it.
+
+Copyright in streamed audio, podcast episodes, lyrics and cover art belongs to
+the respective rights holders. QianYu does not claim ownership of that content
+and does not host or redistribute it. Users are responsible for using online
+content in compliance with applicable law and the terms of the source service.
+
+See [docs/online_compliance.md](docs/online_compliance.md) for details and the
+takedown contact.

@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: 2026 TomJerryGit and QianYu contributors
+# SPDX-License-Identifier: GPL-3.0-only
 """Top-level fullscreen gesture layer.
 
 Airspace blocks Qt *child* widgets over mpv's native child window, but a

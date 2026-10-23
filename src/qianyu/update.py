@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: 2026 TomJerryGit and QianYu contributors
+# SPDX-License-Identifier: GPL-3.0-only
 """Update manifest check, optional Ed25519 signature, and SHA-256 download.
 
 A production release should configure `update_public_key`, sign the canonical

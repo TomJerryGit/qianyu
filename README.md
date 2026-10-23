@@ -131,6 +131,9 @@ tests/unit/      单元测试
 - [本地生产验收记录](docs/acceptance_2026-10-18.md)
 - [下载页](DOWNLOAD.md)
 - [在线功能路线](docs/online_features.md)
+- [在线内容与版权合规](docs/online_compliance.md)
+- [版权声明](COPYRIGHT)
+- [第三方内容/服务声明](NOTICE)
 - [代码签名政策](CODE_SIGNING_POLICY.md)
 - [SignPath Foundation 申请清单](docs/signpath_application.md)
 - [GitHub 发布与 SignPath 步骤](docs/github_publish.md)
@@ -143,6 +146,17 @@ tests/unit/      单元测试
 - [双模播放器路线图](浅语影音_双模播放器路线图.md)
 - [全面分析报告](浅语影音_全面分析报告.md)
 
-## 许可证注意
+## 版权与许可
 
-当前 0.9 原型使用 **PyQt5（GPLv3/商业双许可）**。对外分发前必须迁移到 PySide6（LGPL）或购买 PyQt 商业授权；libmpv 需使用 LGPL 构建。详见分析报告。
+Copyright (C) 2026 TomJerryGit and QianYu contributors.
+
+QianYu 以 **GPL-3.0-only** 发布，完整文本见 [LICENSE](LICENSE)，版权声明见
+[COPYRIGHT](COPYRIGHT)，第三方组件见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+在线内容（电台、播客、歌词、封面）版权归各自权利方所有；QianYu 只提供公开
+API/RSS 访问和播放，不托管、不转播、不提供盗版下载。详见
+[docs/online_compliance.md](docs/online_compliance.md)。
+
+发布包默认使用 PySide6 6.8.3（LGPL）和 libmpv；对外分发前需确认 bundled
+FFmpeg/libmpv 构建的具体许可并附源码获取方式。PyQt5 仅保留 Python 3.8 回退，
+不进入默认发布包。

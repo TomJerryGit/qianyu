@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: 2026 TomJerryGit and QianYu contributors
+# SPDX-License-Identifier: GPL-3.0-only
 """Main window for the 0.9 music player.
 
 Deliberately one window: library (left), lyrics (right), transport (bottom).
@@ -112,6 +114,9 @@ class MainWindow(QMainWindow):
         self._playlist: Playlist = self._playlist_store.playlist
         self._tracks: list[Track] = []
         self._current: Track | None = None
+        self._radio_station: RadioStation | None = None
+        self._radio_retries = 0
+        self._radio_stream_title = ""
         self._lyrics = []
         self._lyrics_index = -1
         self._lyrics_offset_ms = 0
@@ -1008,6 +1013,8 @@ class MainWindow(QMainWindow):
     def _start_track(self, track: Track, index: int | None = None) -> None:
         self._save_podcast_progress()
         self._podcast_url = None
+        self._radio_station = None
+        self._radio_stream_title = ""
         self._scrobbler.track_started(track)
         self._cue_tracks = None
         self._cue_sheet = None
@@ -1198,6 +1205,7 @@ class MainWindow(QMainWindow):
         self._engine.toggle()
 
     def _stop_playback(self) -> None:
+        self._radio_station = None
         self._engine.stop()
         self._progress.setValue(0)
         self._time.setText("00:00 / 00:00")
@@ -1278,6 +1286,11 @@ class MainWindow(QMainWindow):
             self._scrobbler.tick(
                 self._current, position, duration or float(self._current.duration or 0)
             )
+        if self._radio_station is not None:
+            title = self._engine.stream_title
+            if title and title != self._radio_stream_title:
+                self._radio_stream_title = title
+                self._status.showMessage(f"{self._radio_station.name} — {title}")
 
     def _update_desktop_lyrics(self, index: int) -> None:
         if self._desktop_lyrics is None or not self._desktop_lyrics.isVisible():
@@ -1299,9 +1312,28 @@ class MainWindow(QMainWindow):
             if self._mini is not None:
                 self._mini.set_playing(playing)
         elif event.kind == "error":
-            self._status.showMessage(f"播放错误：{event.value}")
+            if self._radio_station is not None and self._radio_retries < 3:
+                self._radio_retries += 1
+                self._status.showMessage(f"电台断流，{3} 秒后重连（{self._radio_retries}/3）")
+                QTimer.singleShot(3000, self._retry_radio)
+            else:
+                self._status.showMessage(f"播放错误：{event.value}")
+        elif event.kind == "eof":
+            if self._radio_station is not None and self._radio_retries < 3:
+                self._radio_retries += 1
+                QTimer.singleShot(1500, self._retry_radio)
         elif event.kind == "index":
             self._sync_index(int(event.value))
+
+    def _retry_radio(self) -> None:
+        station = self._radio_station
+        if station is None:
+            return
+        try:
+            self._engine.play(station.url)
+            self._status.showMessage(f"正在重连电台：{station.name}")
+        except Exception as exc:
+            self._status.showMessage(f"重连失败：{exc}")
 
     def _sync_index(self, index: int) -> None:
         """Follow mpv's own playlist position (gapless transitions)."""
@@ -1398,7 +1430,13 @@ class MainWindow(QMainWindow):
     def _about(self) -> None:
         QMessageBox.about(
             self, "关于浅语影音",
-            "浅语影音 0.9（音乐版）\n\nlibmpv 内核 · 本地音乐库 · 歌词 · 播放列表 · 均衡器",
+            "浅语影音 0.9（音乐版）\n\n"
+            "Copyright (C) 2026 TomJerryGit and QianYu contributors\n"
+            "GPL-3.0-only · 不提供任何担保\n\n"
+            "libmpv 内核 · 本地音乐库 · 歌词 · 播放列表 · 均衡器\n"
+            "在线数据：Radio Browser / iTunes Search / RSS / MusicBrainz / LRCLIB / CAA\n"
+            "音频、播客、歌词和封面版权归各自权利方所有。\n\n"
+            "https://github.com/TomJerryGit/qianyu",
         )
 
     def _check_updates(self) -> None:
@@ -1642,11 +1680,16 @@ class MainWindow(QMainWindow):
             cover="",
         )
         self._play_online_track(track, f"网络电台：{station.name}")
+        self._radio_station = station
+        self._radio_retries = 0
+        self._radio_stream_title = ""
 
     def _play_online_track(self, track: Track, status: str) -> None:
         self._scrobbler.stop()
         self._save_podcast_progress()
         self._podcast_url = None
+        self._radio_station = None
+        self._radio_stream_title = ""
         self._cue_tracks = None
         self._cue_sheet = None
         self._current = track

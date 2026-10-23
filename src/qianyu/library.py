@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: 2026 TomJerryGit and QianYu contributors
+# SPDX-License-Identifier: GPL-3.0-only
 """SQLite-backed local music library.
 
 Scanning is deliberately boring: walk a folder, read tags with mutagen, upsert

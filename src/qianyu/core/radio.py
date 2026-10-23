@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: 2026 TomJerryGit and QianYu contributors
+# SPDX-License-Identifier: GPL-3.0-only
 """Public internet-radio discovery via the Radio Browser API.
 
 Radio Browser is a community directory of publicly available radio streams.

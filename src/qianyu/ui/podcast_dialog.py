@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: 2026 TomJerryGit and QianYu contributors
+# SPDX-License-Identifier: GPL-3.0-only
 """Podcast browser: search by name, load RSS episodes, play an episode."""
 from __future__ import annotations
 
@@ -93,7 +95,7 @@ class PodcastDialog(QDialog):
         top.addWidget(self._button)
         layout.addLayout(top)
 
-        self._status = QLabel("搜索播客；选择后加载单集。")
+        self._status = QLabel("播客数据由 iTunes Search 提供（Powered by iTunes）；内容版权归原作者。")
         self._status.setObjectName("stats")
         layout.addWidget(self._status)
 
@@ -224,6 +226,19 @@ class PodcastDialog(QDialog):
         if self._cache is None:
             self._status.setText("播客缓存不可用。")
             return
+        if self._config is not None and not bool(self._config.get("podcast_download_ack", False)):
+            answer = QMessageBox.question(
+                self,
+                "播客下载",
+                "下载仅用于你个人离线收听。\n\n"
+                "请确认你已获得该播客内容的合法访问权，并遵守节目发布者的条款；"
+                "下载文件不会上传或分发。",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes,
+            )
+            if answer != QMessageBox.Yes:
+                return
+            self._config.set("podcast_download_ack", True)
         row = self._episode_table.currentRow()
         if not (0 <= row < len(self._episodes)):
             self._status.setText("请先选择一个单集。")

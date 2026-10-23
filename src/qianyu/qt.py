@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: 2026 TomJerryGit and QianYu contributors
+# SPDX-License-Identifier: GPL-3.0-only
 """Qt binding shim.
 
 Default auto-detects: PySide6 if installed (Python 3.11+ LGPL build), otherwise

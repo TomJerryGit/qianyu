@@ -23,6 +23,16 @@ signed builds will replace them.
 
 SHA-256 checksums are published on the release page in `SHA256SUMS.txt`.
 
+## Copyright and content
+
+Copyright (C) 2026 TomJerryGit and QianYu contributors.
+QianYu is licensed under GPL-3.0-only.
+
+Online radio, podcast, lyrics and cover art remain the property of their
+respective rights holders. QianYu only accesses public directories/APIs/RSS
+feeds; it does not host or redistribute third-party audio.
+See [docs/online_compliance.md](docs/online_compliance.md).
+
 ## License
 
 GPL-3.0-only. Source: https://github.com/TomJerryGit/qianyu

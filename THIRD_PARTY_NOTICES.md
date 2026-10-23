@@ -16,3 +16,20 @@ QianYu is licensed under GPL-3.0-only. It uses open-source components:
 Before a public release, verify the exact license of the bundled libmpv and
 FFmpeg builds and include their license texts and source offers where
 required.
+
+## Online services and content
+
+QianYu also communicates with public services at the user's request:
+
+| Service | Data | Notes |
+|---|---|---|
+| Radio Browser | radio station directory | community data; streams belong to stations |
+| Apple iTunes Search API | podcast search results | “Powered by iTunes” attribution |
+| Podcast RSS feeds | episode metadata/audio URLs | audio belongs to publishers |
+| MusicBrainz | music metadata | attribution required |
+| LRCLIB | lyrics | lyrics copyright belongs to rights holders |
+| Cover Art Archive | cover art | artwork copyright belongs to rights holders |
+| ListenBrainz | optional scrobble records | user token, default off |
+
+QianYu does not host or redistribute third-party audio, lyrics or artwork.
+See [docs/online_compliance.md](docs/online_compliance.md).

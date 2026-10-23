@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: 2026 TomJerryGit and QianYu contributors
+# SPDX-License-Identifier: GPL-3.0-only
 """Rotating logs, crash dumps and startup breadcrumbs.
 
 The windowed (console=False) build has no stderr, so startup failures must be

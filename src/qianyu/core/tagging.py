@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: 2026 TomJerryGit and QianYu contributors
+# SPDX-License-Identifier: GPL-3.0-only
 """Tag writing via mutagen (ID3 for MP3/WAV; easy tags for FLAC/MP4/OGG)."""
 from __future__ import annotations
 
