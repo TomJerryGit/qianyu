@@ -43,7 +43,7 @@ class EpisodeLoadThread(QThread):
 class PodcastDialog(QDialog):
     play_requested = pyqtSignal(object)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, config=None):
         super().__init__(parent)
         self.setWindowTitle("播客")
         self.resize(900, 620)
@@ -51,6 +51,7 @@ class PodcastDialog(QDialog):
         self._episode_thread: EpisodeLoadThread | None = None
         self._podcasts: list[Podcast] = []
         self._episodes: list[Episode] = []
+        self._config = config
 
         layout = QVBoxLayout(self)
         top = QHBoxLayout()
@@ -95,10 +96,16 @@ class PodcastDialog(QDialog):
         bottom = QHBoxLayout()
         self._detail = QLabel("")
         self._detail.setWordWrap(True)
+        subscribe = QPushButton("订阅/取消订阅")
+        subscribe.clicked.connect(self._toggle_subscription)
+        subscribed = QPushButton("我的订阅")
+        subscribed.clicked.connect(self._show_subscriptions)
         play = QPushButton("播放单集")
         play.clicked.connect(self._play_selected)
         close = QPushButton("关闭")
         close.clicked.connect(self.reject)
+        bottom.addWidget(subscribe)
+        bottom.addWidget(subscribed)
         bottom.addWidget(self._detail, 1)
         bottom.addWidget(play)
         bottom.addWidget(close)
@@ -121,9 +128,11 @@ class PodcastDialog(QDialog):
 
     def _show_podcasts(self, podcasts: list) -> None:
         self._podcasts = list(podcasts)
+        subscribed = {item.feed_url for item in self._subscriptions()}
         self._podcast_table.setRowCount(len(self._podcasts))
         for row, podcast in enumerate(self._podcasts):
-            self._podcast_table.setItem(row, 0, QTableWidgetItem(podcast.name))
+            prefix = "★ " if podcast.feed_url in subscribed else ""
+            self._podcast_table.setItem(row, 0, QTableWidgetItem(prefix + podcast.name))
             self._podcast_table.setItem(row, 1, QTableWidgetItem(podcast.artist))
             self._podcast_table.item(row, 0).setData(Qt.UserRole, podcast)
         self._status.setText(f"找到 {len(self._podcasts)} 个播客。" if self._podcasts else "没有找到播客。")
@@ -147,9 +156,11 @@ class PodcastDialog(QDialog):
 
     def _show_episodes(self, episodes: list) -> None:
         self._episodes = list(episodes)
+        played = set(self._played())
         self._episode_table.setRowCount(len(self._episodes))
         for row, episode in enumerate(self._episodes):
-            self._episode_table.setItem(row, 0, QTableWidgetItem(episode.title))
+            prefix = "✓ " if episode.url in played else ""
+            self._episode_table.setItem(row, 0, QTableWidgetItem(prefix + episode.title))
             self._episode_table.setItem(row, 1, QTableWidgetItem(episode.published))
             minutes, seconds = divmod(int(episode.duration or 0), 60)
             duration = f"{minutes}:{seconds:02d}" if episode.duration else ""
@@ -158,6 +169,54 @@ class PodcastDialog(QDialog):
         self._status.setText(f"{len(self._episodes)} 个单集。")
         if self._episodes:
             self._episode_table.selectRow(0)
+
+    def _subscriptions(self) -> list[Podcast]:
+        if self._config is None:
+            return []
+        result = []
+        for item in self._config.get("podcast_subscriptions", []) or []:
+            podcast = Podcast.from_dict(item)
+            if podcast is not None:
+                result.append(podcast)
+        return result
+
+    def _set_subscriptions(self, podcasts: list[Podcast]) -> None:
+        if self._config is None:
+            return
+        self._config.set("podcast_subscriptions", [item.as_dict() for item in podcasts])
+
+    def _subscription_for_selected(self) -> Podcast | None:
+        row = self._podcast_table.currentRow()
+        if 0 <= row < len(self._podcasts):
+            return self._podcasts[row]
+        return None
+
+    def _toggle_subscription(self) -> None:
+        podcast = self._subscription_for_selected()
+        if podcast is None:
+            self._status.setText("请先选择一个播客。")
+            return
+        subscriptions = self._subscriptions()
+        if any(item.feed_url == podcast.feed_url for item in subscriptions):
+            subscriptions = [item for item in subscriptions if item.feed_url != podcast.feed_url]
+            self._status.setText(f"已取消订阅：{podcast.name}")
+        else:
+            subscriptions.append(podcast)
+            self._status.setText(f"已订阅：{podcast.name}")
+        self._set_subscriptions(subscriptions)
+        self._show_podcasts(self._podcasts)
+
+    def _played(self) -> list[str]:
+        if self._config is None:
+            return []
+        return list(self._config.get("podcast_played", []) or [])
+
+    def _show_subscriptions(self) -> None:
+        self._podcasts = self._subscriptions()
+        self._show_podcasts(self._podcasts)
+        self._status.setText(
+            f"我的订阅：{len(self._podcasts)} 个播客。" if self._podcasts else "还没有订阅播客。"
+        )
 
     def _show_error(self, message: str) -> None:
         self._status.setText("操作失败。")

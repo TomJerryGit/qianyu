@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from qianyu.core.podcast import (  # noqa: E402
-    parse_duration, parse_feed, parse_podcast_search,
+    Podcast, parse_duration, parse_feed, parse_podcast_search,
 )
 
 RSS = """<?xml version="1.0" encoding="UTF-8"?>
@@ -63,6 +63,14 @@ class PodcastTests(unittest.TestCase):
         self.assertEqual(episodes[0].published, "2024-10-18")
         self.assertTrue(episodes[0].url.endswith("one.mp3"))
         self.assertEqual(episodes[1].duration, 90)
+
+    def test_podcast_round_trip(self):
+        podcast = Podcast(name="One", feed_url="https://example.com/feed.xml",
+                          artist="Host")
+        restored = Podcast.from_dict(podcast.as_dict())
+        self.assertIsNotNone(restored)
+        self.assertEqual(restored.name, "One")
+        self.assertIsNone(Podcast.from_dict({"name": "bad", "feed_url": "file:///x"}))
 
 
 if __name__ == "__main__":

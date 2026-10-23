@@ -24,6 +24,34 @@ class Podcast:
     description: str = ""
     episode_count: int = 0
 
+    def as_dict(self) -> dict:
+        return {
+            "name": self.name,
+            "feed_url": self.feed_url,
+            "artist": self.artist,
+            "genre": self.genre,
+            "artwork": self.artwork,
+            "description": self.description,
+            "episode_count": self.episode_count,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Podcast | None":
+        if not isinstance(data, dict):
+            return None
+        feed = _text(data.get("feed_url"))
+        if not feed.lower().startswith(("http://", "https://")):
+            return None
+        return cls(
+            name=_text(data.get("name")) or "Unknown podcast",
+            feed_url=feed,
+            artist=_text(data.get("artist")),
+            genre=_text(data.get("genre")),
+            artwork=_text(data.get("artwork")),
+            description=_text(data.get("description")),
+            episode_count=_int(data.get("episode_count")),
+        )
+
 
 @dataclass(frozen=True)
 class Episode:

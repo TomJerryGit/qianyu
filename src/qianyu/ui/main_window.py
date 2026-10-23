@@ -1557,7 +1557,7 @@ class MainWindow(QMainWindow):
         self._play_radio(RadioStation(name=url, url=url))
 
     def _show_podcasts(self) -> None:
-        dialog = PodcastDialog(self)
+        dialog = PodcastDialog(self, self._config)
         dialog.play_requested.connect(self._play_episode)
         dialog.exec()
 
@@ -1571,6 +1571,41 @@ class MainWindow(QMainWindow):
             cover="",
         )
         self._play_online_track(track, f"播客：{episode.title}")
+        self._podcast_url = episode.url
+        played = list(self._config.get("podcast_played", []) or [])
+        if episode.url not in played:
+            played.append(episode.url)
+            self._config.set("podcast_played", played[-500:])
+        progress = self._config.get("podcast_progress", {}) or {}
+        start = float(progress.get(episode.url, 0) or 0)
+        if start > 5:
+            QTimer.singleShot(700, lambda: self._resume_podcast(episode.url, start))
+
+    def _resume_podcast(self, url: str, start: float) -> None:
+        if self._current is None or self._current.path != url:
+            return
+        try:
+            self._engine.seek(start)
+            self._status.showMessage(f"从 {format_time(start)} 继续播放")
+        except Exception:
+            pass
+
+    def _save_podcast_progress(self) -> None:
+        url = getattr(self, "_podcast_url", None)
+        if not url or self._current is None or self._current.path != url:
+            return
+        try:
+            position = float(self._engine.position or 0)
+        except Exception:
+            return
+        if position <= 5:
+            return
+        duration = float(self._current.duration or 0)
+        if duration > 0 and position >= duration - 10:
+            return
+        progress = dict(self._config.get("podcast_progress", {}) or {})
+        progress[url] = round(position, 1)
+        self._config.set("podcast_progress", progress)
 
     def _play_radio(self, station: RadioStation) -> None:
         track = Track(
@@ -1584,6 +1619,8 @@ class MainWindow(QMainWindow):
         self._play_online_track(track, f"网络电台：{station.name}")
 
     def _play_online_track(self, track: Track, status: str) -> None:
+        self._save_podcast_progress()
+        self._podcast_url = None
         self._cue_tracks = None
         self._cue_sheet = None
         self._current = track
@@ -1624,6 +1661,7 @@ class MainWindow(QMainWindow):
             return
         self._shutdown_done = True
         try:
+            self._save_podcast_progress()
             self._config.set("window", {"w": self.width(), "h": self.height()})
             self._config.set("volume", self._volume.value())
             self._playlist_store.save()
