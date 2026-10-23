@@ -44,6 +44,7 @@ from ..core.metadata import fetch_cover, lookup_recording
 from ..core.radio import RadioStation
 from ..core.podcast import Episode
 from ..core.podcast_cache import PodcastCache
+from ..core.scrobble import ListenBrainzScrobbler
 from ..core.tagging import write_tags
 from .settings_dialog import SettingsDialog
 from .track_model import TrackTableModel
@@ -106,6 +107,7 @@ class MainWindow(QMainWindow):
             base / "podcast_cache",
             limit_mb=int(config.get("podcast_cache_limit_mb", 2048)),
         )
+        self._scrobbler = ListenBrainzScrobbler(config)
         self._playlist_store = PlaylistStore(base / "playlist.json")
         self._playlist: Playlist = self._playlist_store.playlist
         self._tracks: list[Track] = []
@@ -1006,6 +1008,7 @@ class MainWindow(QMainWindow):
     def _start_track(self, track: Track, index: int | None = None) -> None:
         self._save_podcast_progress()
         self._podcast_url = None
+        self._scrobbler.track_started(track)
         self._cue_tracks = None
         self._cue_sheet = None
         self._current = track
@@ -1271,6 +1274,10 @@ class MainWindow(QMainWindow):
                 self._update_desktop_lyrics(index)
                 if self._now_page is not None and self._now_page.isVisible():
                     self._now_page.set_position(index)
+        if self._current is not None:
+            self._scrobbler.tick(
+                self._current, position, duration or float(self._current.duration or 0)
+            )
 
     def _update_desktop_lyrics(self, index: int) -> None:
         if self._desktop_lyrics is None or not self._desktop_lyrics.isVisible():
@@ -1349,6 +1356,7 @@ class MainWindow(QMainWindow):
             self._podcast_cache.prune()
         except Exception:
             pass
+        self._scrobbler.reload()
         if str(self._config.get("theme", "dark")) != old_theme:
             self._set_theme(str(self._config.get("theme", "dark")))
         new_media_keys = bool(self._config.get("global_media_keys", True))
@@ -1636,6 +1644,7 @@ class MainWindow(QMainWindow):
         self._play_online_track(track, f"网络电台：{station.name}")
 
     def _play_online_track(self, track: Track, status: str) -> None:
+        self._scrobbler.stop()
         self._save_podcast_progress()
         self._podcast_url = None
         self._cue_tracks = None

@@ -72,6 +72,18 @@ class SettingsDialog(QDialog):
         self._podcast_cache_limit.setValue(int(self._config.get("podcast_cache_limit_mb", 2048)))
         layout.addWidget(self._podcast_cache_limit)
 
+        self._listenbrainz = QCheckBox("启用 ListenBrainz Scrobbling（仅本地音乐，默认关闭）")
+        self._listenbrainz.setChecked(bool(self._config.get("listenbrainz_enabled", False)))
+        layout.addWidget(self._listenbrainz)
+        layout.addWidget(QLabel("ListenBrainz 用户 token"))
+        self._listenbrainz_token = QLineEdit(str(self._config.get("listenbrainz_token", "")))
+        self._listenbrainz_token.setEchoMode(QLineEdit.Password)
+        self._listenbrainz_token.setPlaceholderText("在 listenbrainz.org/settings 获取")
+        layout.addWidget(self._listenbrainz_token)
+        note = QLabel("token 只保存在本机配置文件；播放达到 50% 或 4 分钟后提交一次。")
+        note.setWordWrap(True)
+        layout.addWidget(note)
+
         layout.addWidget(QLabel("更新源（manifest.json URL，可留空）"))
         self._update_url = QLineEdit(str(self._config.get("update_url", "")))
         self._update_url.setPlaceholderText("https://example.com/qianyu/manifest.json")
@@ -127,6 +139,8 @@ class SettingsDialog(QDialog):
         self._config.set("update_url", self._update_url.text().strip())
         self._config.set("update_public_key", self._update_key.text().strip())
         self._config.set("podcast_cache_limit_mb", self._podcast_cache_limit.value())
+        self._config.set("listenbrainz_enabled", self._listenbrainz.isChecked())
+        self._config.set("listenbrainz_token", self._listenbrainz_token.text().strip())
         try:
             self._engine.set_replaygain(str(self._replaygain.currentData()))
             self._config.set("replaygain", str(self._replaygain.currentData()))

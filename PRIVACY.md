@@ -19,10 +19,16 @@ online action:
 - **MusicBrainz** — title/artist query for metadata completion.
 - **LRCLIB** — title/artist query for online lyrics.
 - **Cover Art Archive** — release ID query for online cover art.
+- **Radio Browser** — radio station searches.
+- **iTunes Search** — podcast searches.
+- **Podcast RSS feeds** — the feed URL is fetched to list episodes.
+- **ListenBrainz** — optional scrobbling when enabled by the user. A user token
+  is stored locally in the settings file and sent only to ListenBrainz.
 
 No audio files and no local library contents are uploaded by these
 requests. The services receive the query text and normal HTTP metadata
-(IP address, user agent).
+(IP address, user agent). Podcast downloads are stored locally and are not
+uploaded anywhere.
 
 If the user does not use the online actions, QianYu can be used fully
 offline.
