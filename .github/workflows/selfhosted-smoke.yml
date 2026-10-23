@@ -20,5 +20,12 @@ jobs:
         run: |
           Write-Host "Runner: $env:RUNNER_NAME"
           Write-Host "Workspace: $env:GITHUB_WORKSPACE"
-          python --version
+          $python = "D:\qianyu\tools\venv311\Scripts\python.exe"
+          if (Test-Path $python) {
+            & $python --version
+          } elseif (Get-Command python -ErrorAction SilentlyContinue) {
+            python --version
+          } else {
+            Write-Host "Python not found on runner PATH"
+          }
           Write-Host "SELFHOSTED_SMOKE_OK"
