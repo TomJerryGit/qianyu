@@ -29,12 +29,13 @@ class RadioSearchThread(QThread):
 class RadioDialog(QDialog):
     play_requested = pyqtSignal(object)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, config=None):
         super().__init__(parent)
         self.setWindowTitle("网络电台")
         self.resize(820, 560)
         self._thread: RadioSearchThread | None = None
         self._stations: list[RadioStation] = []
+        self._config = config
 
         layout = QVBoxLayout(self)
         top = QHBoxLayout()
@@ -73,10 +74,16 @@ class RadioDialog(QDialog):
         layout.addWidget(self._table, 1)
 
         bottom = QHBoxLayout()
+        favorite = QPushButton("收藏/取消收藏")
+        favorite.clicked.connect(self._toggle_favorite)
+        favorites = QPushButton("我的收藏")
+        favorites.clicked.connect(self._show_favorites)
         play = QPushButton("播放")
         play.clicked.connect(self._play_selected)
         close = QPushButton("关闭")
         close.clicked.connect(self.reject)
+        bottom.addWidget(favorite)
+        bottom.addWidget(favorites)
         bottom.addStretch(1)
         bottom.addWidget(play)
         bottom.addWidget(close)
@@ -99,6 +106,10 @@ class RadioDialog(QDialog):
 
     def _show_stations(self, stations: list) -> None:
         self._stations = list(stations)
+        self._render_stations()
+        self._status.setText(f"找到 {len(self._stations)} 个电台。" if self._stations else "没有找到电台。")
+
+    def _render_stations(self) -> None:
         self._table.setRowCount(len(self._stations))
         for row, station in enumerate(self._stations):
             self._table.setItem(row, 0, QTableWidgetItem(station.name))
@@ -107,7 +118,41 @@ class RadioDialog(QDialog):
             quality = f"{station.bitrate} kbps" if station.bitrate else station.codec
             self._table.setItem(row, 3, QTableWidgetItem(quality))
             self._table.item(row, 0).setData(Qt.UserRole, station)
-        self._status.setText(f"找到 {len(self._stations)} 个电台。" if self._stations else "没有找到电台。")
+
+    def _favorites(self) -> list[RadioStation]:
+        if self._config is None:
+            return []
+        result = []
+        for item in self._config.get("radio_favorites", []) or []:
+            station = RadioStation.from_dict(item)
+            if station is not None:
+                result.append(station)
+        return result
+
+    def _set_favorites(self, stations: list[RadioStation]) -> None:
+        if self._config is None:
+            return
+        self._config.set("radio_favorites", [station.as_dict() for station in stations])
+
+    def _toggle_favorite(self) -> None:
+        row = self._table.currentRow()
+        if not (0 <= row < len(self._stations)):
+            self._status.setText("请先选择一个电台。")
+            return
+        station = self._stations[row]
+        favorites = self._favorites()
+        if any(item.url == station.url for item in favorites):
+            favorites = [item for item in favorites if item.url != station.url]
+            self._status.setText(f"已取消收藏：{station.name}")
+        else:
+            favorites.append(station)
+            self._status.setText(f"已收藏：{station.name}")
+        self._set_favorites(favorites)
+
+    def _show_favorites(self) -> None:
+        self._stations = self._favorites()
+        self._render_stations()
+        self._status.setText(f"我的收藏：{len(self._stations)} 个电台。" if self._stations else "还没有收藏电台。")
 
     def _show_error(self, message: str) -> None:
         self._status.setText("搜索失败。")

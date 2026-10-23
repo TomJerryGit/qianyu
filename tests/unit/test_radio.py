@@ -48,6 +48,14 @@ class RadioTests(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].url, "http://radio.example/live")
 
+    def test_station_round_trip(self):
+        station = parse_stations([{"name": "One", "url_resolved": "https://radio.example/one"}])[0]
+        restored = type(station).from_dict(station.as_dict())
+        self.assertIsNotNone(restored)
+        self.assertEqual(restored.name, "One")
+        self.assertEqual(restored.url, station.url)
+        self.assertIsNone(type(station).from_dict({"name": "bad", "url": "file:///x"}))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

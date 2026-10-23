@@ -1,0 +1,24 @@
+name: selfhosted-smoke
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: [self-hosted, windows, qianyu]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Runner environment
+        shell: pwsh
+        run: |
+          Write-Host "Runner: $env:RUNNER_NAME"
+          Write-Host "Workspace: $env:GITHUB_WORKSPACE"
+          python --version
+          Write-Host "SELFHOSTED_SMOKE_OK"

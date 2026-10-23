@@ -13,7 +13,12 @@ from dataclasses import dataclass
 from typing import Iterable
 
 USER_AGENT = "QianYu/0.9 (local media player)"
-API_ROOT = "https://de1.api.radio-browser.info/json"
+API_ROOTS = (
+    "https://de1.api.radio-browser.info/json",
+    "https://de2.api.radio-browser.info/json",
+    "https://nl1.api.radio-browser.info/json",
+    "https://at1.api.radio-browser.info/json",
+)
 _CACHE: dict[tuple[str, str, int], list["RadioStation"]] = {}
 
 
@@ -32,6 +37,36 @@ class RadioStation:
     def display(self) -> str:
         details = " · ".join(part for part in (self.country, self.tags) if part)
         return f"{self.name} — {details}" if details else self.name
+
+    def as_dict(self) -> dict:
+        return {
+            "name": self.name,
+            "url": self.url,
+            "country": self.country,
+            "tags": self.tags,
+            "codec": self.codec,
+            "bitrate": self.bitrate,
+            "homepage": self.homepage,
+            "favicon": self.favicon,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "RadioStation | None":
+        if not isinstance(data, dict):
+            return None
+        url = _clean(data.get("url"))
+        if not url.lower().startswith(("http://", "https://")):
+            return None
+        return cls(
+            name=_clean(data.get("name")) or "Unknown station",
+            url=url,
+            country=_clean(data.get("country")),
+            tags=_clean(data.get("tags")),
+            codec=_clean(data.get("codec")),
+            bitrate=int(data.get("bitrate") or 0),
+            homepage=_clean(data.get("homepage")),
+            favicon=_clean(data.get("favicon")),
+        )
 
 
 def _clean(value) -> str:
@@ -84,13 +119,23 @@ def search_stations(keyword: str, country: str = "", limit: int = 50,
     }
     if country.strip():
         params["countrycode"] = country.strip().upper()
-    url = f"{API_ROOT}/stations/search?" + urllib.parse.urlencode(params)
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-    except Exception as exc:
-        raise RuntimeError(f"网络电台查询失败：{type(exc).__name__}: {exc}") from exc
+    query = urllib.parse.urlencode(params)
+    payload = None
+    last_error: Exception | None = None
+    for root in API_ROOTS:
+        request = urllib.request.Request(f"{root}/stations/search?{query}",
+                                         headers={"User-Agent": USER_AGENT})
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+            break
+        except Exception as exc:
+            last_error = exc
+            continue
+    if payload is None:
+        raise RuntimeError(
+            f"网络电台查询失败：{type(last_error).__name__}: {last_error}"
+        ) from last_error
     if not isinstance(payload, list):
         raise RuntimeError("网络电台返回格式错误")
     stations = parse_stations(payload)

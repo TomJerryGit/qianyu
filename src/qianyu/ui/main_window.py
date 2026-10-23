@@ -1536,7 +1536,7 @@ class MainWindow(QMainWindow):
         self._status.showMessage(f"CUE：{sheet.title} / {cue.title}")
 
     def _show_radio(self) -> None:
-        dialog = RadioDialog(self)
+        dialog = RadioDialog(self, self._config)
         dialog.play_requested.connect(self._play_radio)
         dialog.exec()
 

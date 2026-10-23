@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build-unsigned:
-    runs-on: windows-latest
+    runs-on: [self-hosted, windows, qianyu]
     steps:
       - uses: actions/checkout@v4
 
