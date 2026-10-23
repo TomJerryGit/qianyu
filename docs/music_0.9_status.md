@@ -17,7 +17,7 @@
 | CUE/整轨 | `core/cue.py` + `ui/cue_dialog.py` + 引擎 `start/end` 队列 | 单/多文件 CUE 解析、连续播放、虚拟曲目入库/封面网格 |
 | 收藏/最近播放 | 媒体库筛选 + 右键收藏 | SQLite `favorite/play_count/last_played`，最近/最常/未播放/最近添加 |
 | 批量标签 | `ui/batch_tag_dialog.py` | 多选后批量改艺术家/专辑，逐个写文件+DB |
-| 网络电台 | `core/radio.py` + `ui/radio_dialog.py` | Radio Browser 搜索/国家筛选，后台线程，mpv 播放 |
+| 网络电台 | `core/radio.py` + `ui/radio_dialog.py` | Radio Browser 搜索/国家筛选，收藏/最近/导入导出，ICY 当前曲目，断流重连 |
 | 播客 | `core/podcast.py` + `ui/podcast_dialog.py` | iTunes 搜索 + RSS 单集解析，mpv 播放 |
 | 播客缓存 | `core/podcast_cache.py` + 播客对话框 | 单集下载/队列/离线播放/上限，默认 2 GB |
 | ListenBrainz | `core/scrobble.py` + 设置 | 可选 Scrobbling，50%/4 分钟阈值，默认关闭 |
@@ -122,6 +122,8 @@
 **Round 33 新增**：播客单集下载缓存、顺序下载队列、离线播放、缓存上限设置；单测增至 42。
 
 **Round 34 新增**：可选 ListenBrainz Scrobbling、50%/4 分钟阈值、token 本地保存；单测增至 47。
+
+**Round 35 新增**：电台最近收听/收藏导入导出/ICY 当前曲目/断流重连；版权与在线内容合规文档、SPDX 头、安装包版权元数据。
 
 **Round 31 新增**：Radio Browser 网络电台搜索/播放、网络流地址播放；单测增至 35。
 
