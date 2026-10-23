@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Runner environment
-        shell: pwsh
+        shell: powershell
         run: |
           Write-Host "Runner: $env:RUNNER_NAME"
           Write-Host "Workspace: $env:GITHUB_WORKSPACE"
