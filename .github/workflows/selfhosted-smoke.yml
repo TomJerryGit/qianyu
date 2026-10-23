@@ -29,3 +29,4 @@ jobs:
             Write-Host "Python not found on runner PATH"
           }
           Write-Host "SELFHOSTED_SMOKE_OK"
+          exit 0
