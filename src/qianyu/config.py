@@ -21,6 +21,7 @@ DEFAULTS = {
     "update_public_key": "",
     "video_gesture_overlay": True,
     "video_gesture_windowed": False,
+    "podcast_cache_limit_mb": 2048,
     "window": {"w": 1180, "h": 760},
 }
 

@@ -7,7 +7,7 @@ from pathlib import Path
 from ..qt import Qt
 from ..qt import (
     QCheckBox, QComboBox, QDialog, QFileDialog, QHBoxLayout, QLabel, QLineEdit,
-    QListWidget, QPushButton, QVBoxLayout,
+    QListWidget, QPushButton, QSpinBox, QVBoxLayout,
 )
 
 from ..config import Config
@@ -66,6 +66,12 @@ class SettingsDialog(QDialog):
         self._exclusive.setChecked(bool(self._config.get("audio_exclusive", False)))
         layout.addWidget(self._exclusive)
 
+        layout.addWidget(QLabel("播客缓存上限（MB）"))
+        self._podcast_cache_limit = QSpinBox()
+        self._podcast_cache_limit.setRange(128, 102400)
+        self._podcast_cache_limit.setValue(int(self._config.get("podcast_cache_limit_mb", 2048)))
+        layout.addWidget(self._podcast_cache_limit)
+
         layout.addWidget(QLabel("更新源（manifest.json URL，可留空）"))
         self._update_url = QLineEdit(str(self._config.get("update_url", "")))
         self._update_url.setPlaceholderText("https://example.com/qianyu/manifest.json")
@@ -120,6 +126,7 @@ class SettingsDialog(QDialog):
         self._config.set("library_folders", [self._folders.item(i).text() for i in range(self._folders.count())])
         self._config.set("update_url", self._update_url.text().strip())
         self._config.set("update_public_key", self._update_key.text().strip())
+        self._config.set("podcast_cache_limit_mb", self._podcast_cache_limit.value())
         try:
             self._engine.set_replaygain(str(self._replaygain.currentData()))
             self._config.set("replaygain", str(self._replaygain.currentData()))

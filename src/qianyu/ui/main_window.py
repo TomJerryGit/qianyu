@@ -43,6 +43,7 @@ from ..core.cue import parse_cue
 from ..core.metadata import fetch_cover, lookup_recording
 from ..core.radio import RadioStation
 from ..core.podcast import Episode
+from ..core.podcast_cache import PodcastCache
 from ..core.tagging import write_tags
 from .settings_dialog import SettingsDialog
 from .track_model import TrackTableModel
@@ -101,6 +102,10 @@ class MainWindow(QMainWindow):
             # startup crash; the data simply lives in a temp directory.
             base = Path(tempfile.mkdtemp(prefix="qianyu-data-"))
         self._library = Library(base / "library.db")
+        self._podcast_cache = PodcastCache(
+            base / "podcast_cache",
+            limit_mb=int(config.get("podcast_cache_limit_mb", 2048)),
+        )
         self._playlist_store = PlaylistStore(base / "playlist.json")
         self._playlist: Playlist = self._playlist_store.playlist
         self._tracks: list[Track] = []
@@ -999,6 +1004,8 @@ class MainWindow(QMainWindow):
         self._start_track(track, row)
 
     def _start_track(self, track: Track, index: int | None = None) -> None:
+        self._save_podcast_progress()
+        self._podcast_url = None
         self._cue_tracks = None
         self._cue_sheet = None
         self._current = track
@@ -1335,6 +1342,13 @@ class MainWindow(QMainWindow):
         dialog = SettingsDialog(self._config, self._engine, self)
         if dialog.exec() != DIALOG_ACCEPTED:
             return
+        try:
+            self._podcast_cache.limit_bytes = (
+                int(self._config.get("podcast_cache_limit_mb", 2048)) * 1024 * 1024
+            )
+            self._podcast_cache.prune()
+        except Exception:
+            pass
         if str(self._config.get("theme", "dark")) != old_theme:
             self._set_theme(str(self._config.get("theme", "dark")))
         new_media_keys = bool(self._config.get("global_media_keys", True))
@@ -1557,20 +1571,23 @@ class MainWindow(QMainWindow):
         self._play_radio(RadioStation(name=url, url=url))
 
     def _show_podcasts(self) -> None:
-        dialog = PodcastDialog(self, self._config)
+        dialog = PodcastDialog(self, self._config, self._podcast_cache)
         dialog.play_requested.connect(self._play_episode)
         dialog.exec()
 
     def _play_episode(self, episode: Episode) -> None:
+        cached = self._podcast_cache.get(episode.url)
         track = Track(
-            path=episode.url,
+            path=str(cached) if cached is not None else episode.url,
             title=episode.title,
             artist=episode.podcast_name,
             album="播客",
             duration=episode.duration or 0.0,
             cover="",
         )
-        self._play_online_track(track, f"播客：{episode.title}")
+        self._play_online_track(
+            track, f"播客：{episode.title}" + ("（缓存）" if cached is not None else "")
+        )
         self._podcast_url = episode.url
         played = list(self._config.get("podcast_played", []) or [])
         if episode.url not in played:
@@ -1582,7 +1599,7 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(700, lambda: self._resume_podcast(episode.url, start))
 
     def _resume_podcast(self, url: str, start: float) -> None:
-        if self._current is None or self._current.path != url:
+        if self._podcast_url != url:
             return
         try:
             self._engine.seek(start)
@@ -1592,7 +1609,7 @@ class MainWindow(QMainWindow):
 
     def _save_podcast_progress(self) -> None:
         url = getattr(self, "_podcast_url", None)
-        if not url or self._current is None or self._current.path != url:
+        if not url or self._current is None:
             return
         try:
             position = float(self._engine.position or 0)

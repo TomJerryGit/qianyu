@@ -2,12 +2,15 @@
 """Podcast browser: search by name, load RSS episodes, play an episode."""
 from __future__ import annotations
 
+from collections import deque
+
 from ..qt import (
     QAbstractItemView, QDialog, QHBoxLayout, QHeaderView, QLabel, QLineEdit,
     QMessageBox, QPushButton, QSplitter, QTableWidget, QTableWidgetItem,
     QThread, QVBoxLayout, Qt, pyqtSignal,
 )
 from ..core.podcast import Episode, Podcast, fetch_episodes, search_podcasts
+from ..core.podcast_cache import PodcastCache
 
 
 class PodcastSearchThread(QThread):
@@ -40,18 +43,44 @@ class EpisodeLoadThread(QThread):
             self.failed.emit(f"{type(exc).__name__}: {exc}")
 
 
+class EpisodeDownloadThread(QThread):
+    progress = pyqtSignal(str, int, int)
+    downloaded = pyqtSignal(str, str)
+    failed = pyqtSignal(str, str)
+
+    def __init__(self, cache: PodcastCache, episode: Episode, parent=None):
+        super().__init__(parent)
+        self._cache = cache
+        self._episode = episode
+
+    def run(self) -> None:
+        try:
+            path = self._cache.download(
+                self._episode.url,
+                title=self._episode.title,
+                progress=lambda done, total: self.progress.emit(self._episode.url, done, total),
+                cancelled=self.isInterruptionRequested,
+            )
+            self.downloaded.emit(self._episode.url, str(path))
+        except Exception as exc:
+            self.failed.emit(self._episode.url, f"{type(exc).__name__}: {exc}")
+
+
 class PodcastDialog(QDialog):
     play_requested = pyqtSignal(object)
 
-    def __init__(self, parent=None, config=None):
+    def __init__(self, parent=None, config=None, cache: PodcastCache | None = None):
         super().__init__(parent)
         self.setWindowTitle("播客")
         self.resize(900, 620)
         self._search_thread: PodcastSearchThread | None = None
         self._episode_thread: EpisodeLoadThread | None = None
+        self._download_thread: EpisodeDownloadThread | None = None
+        self._download_queue: deque[Episode] = deque()
         self._podcasts: list[Podcast] = []
         self._episodes: list[Episode] = []
         self._config = config
+        self._cache = cache
 
         layout = QVBoxLayout(self)
         top = QHBoxLayout()
@@ -100,12 +129,18 @@ class PodcastDialog(QDialog):
         subscribe.clicked.connect(self._toggle_subscription)
         subscribed = QPushButton("我的订阅")
         subscribed.clicked.connect(self._show_subscriptions)
+        download = QPushButton("下载单集")
+        download.clicked.connect(self._download_selected)
+        remove = QPushButton("删除下载")
+        remove.clicked.connect(self._delete_selected)
         play = QPushButton("播放单集")
         play.clicked.connect(self._play_selected)
         close = QPushButton("关闭")
         close.clicked.connect(self.reject)
         bottom.addWidget(subscribe)
         bottom.addWidget(subscribed)
+        bottom.addWidget(download)
+        bottom.addWidget(remove)
         bottom.addWidget(self._detail, 1)
         bottom.addWidget(play)
         bottom.addWidget(close)
@@ -156,19 +191,107 @@ class PodcastDialog(QDialog):
 
     def _show_episodes(self, episodes: list) -> None:
         self._episodes = list(episodes)
+        self._refresh_episode_marks()
+        self._status.setText(f"{len(self._episodes)} 个单集。")
+        if self._episodes:
+            self._episode_table.selectRow(0)
+
+    def _episode_prefix(self, episode: Episode) -> str:
+        prefix = ""
+        if episode.url in set(self._played()):
+            prefix += "✓ "
+        if self._cache is not None and self._cache.is_downloaded(episode.url):
+            prefix += "⬇ "
+        return prefix
+
+    def _refresh_episode_marks(self) -> None:
         played = set(self._played())
         self._episode_table.setRowCount(len(self._episodes))
         for row, episode in enumerate(self._episodes):
-            prefix = "✓ " if episode.url in played else ""
+            prefix = ("✓ " if episode.url in played else "")
+            if self._cache is not None and self._cache.is_downloaded(episode.url):
+                prefix += "⬇ "
             self._episode_table.setItem(row, 0, QTableWidgetItem(prefix + episode.title))
             self._episode_table.setItem(row, 1, QTableWidgetItem(episode.published))
             minutes, seconds = divmod(int(episode.duration or 0), 60)
             duration = f"{minutes}:{seconds:02d}" if episode.duration else ""
             self._episode_table.setItem(row, 2, QTableWidgetItem(duration))
             self._episode_table.item(row, 0).setData(Qt.UserRole, episode)
-        self._status.setText(f"{len(self._episodes)} 个单集。")
-        if self._episodes:
-            self._episode_table.selectRow(0)
+        if 0 <= self._episode_table.currentRow() < len(self._episodes):
+            self._episode_table.selectRow(self._episode_table.currentRow())
+
+    def _download_selected(self) -> None:
+        if self._cache is None:
+            self._status.setText("播客缓存不可用。")
+            return
+        row = self._episode_table.currentRow()
+        if not (0 <= row < len(self._episodes)):
+            self._status.setText("请先选择一个单集。")
+            return
+        episode = self._episodes[row]
+        if self._cache.is_downloaded(episode.url):
+            self._status.setText("该单集已经下载。")
+            return
+        if (self._download_thread is not None and self._download_thread.isRunning()
+                and self._download_thread.property("url") == episode.url):
+            self._status.setText("该单集正在下载。")
+            return
+        if any(item.url == episode.url for item in self._download_queue):
+            self._status.setText("该单集已在下载队列中。")
+            return
+        self._download_queue.append(episode)
+        self._status.setText(
+            f"已加入下载队列：{episode.title}（队列 {len(self._download_queue)}）"
+        )
+        if self._download_thread is None or not self._download_thread.isRunning():
+            self._start_next_download()
+
+    def _start_next_download(self) -> None:
+        if not self._download_queue:
+            self._status.setText(
+                f"下载队列为空。缓存 {self._cache.total_bytes() / 1024 / 1024:.1f} MB"
+                if self._cache is not None else "缓存不可用。"
+            )
+            return
+        if self._cache is None:
+            return
+        episode = self._download_queue.popleft()
+        self._download_thread = EpisodeDownloadThread(self._cache, episode, self)
+        self._download_thread.setProperty("url", episode.url)
+        self._download_thread.progress.connect(self._on_download_progress)
+        self._download_thread.downloaded.connect(self._on_downloaded)
+        self._download_thread.failed.connect(self._on_download_failed)
+        self._download_thread.finished.connect(self._start_next_download)
+        self._download_thread.start()
+        self._status.setText(f"开始下载：{episode.title}")
+
+    def _on_download_progress(self, url: str, done: int, total: int) -> None:
+        if total > 0:
+            self._status.setText(f"下载中：{done * 100 // total}%（{done / 1024 / 1024:.1f} MB）")
+        else:
+            self._status.setText(f"下载中：{done / 1024 / 1024:.1f} MB")
+
+    def _on_downloaded(self, url: str, path: str) -> None:
+        self._refresh_episode_marks()
+        self._status.setText(f"下载完成，已缓存：{path}")
+
+    def _on_download_failed(self, url: str, message: str) -> None:
+        self._status.setText("下载失败。")
+        QMessageBox.warning(self, "播客下载", message)
+
+    def _delete_selected(self) -> None:
+        if self._cache is None:
+            return
+        row = self._episode_table.currentRow()
+        if not (0 <= row < len(self._episodes)):
+            self._status.setText("请先选择一个单集。")
+            return
+        episode = self._episodes[row]
+        if not self._cache.remove(episode.url):
+            self._status.setText("该单集没有缓存。")
+            return
+        self._refresh_episode_marks()
+        self._status.setText(f"已删除缓存：{episode.title}")
 
     def _subscriptions(self) -> list[Podcast]:
         if self._config is None:
@@ -230,7 +353,8 @@ class PodcastDialog(QDialog):
         self.play_requested.emit(self._episodes[row])
 
     def closeEvent(self, event) -> None:
-        for thread in (self._search_thread, self._episode_thread):
+        self._download_queue.clear()
+        for thread in (self._search_thread, self._episode_thread, self._download_thread):
             if thread is not None and thread.isRunning():
                 thread.requestInterruption()
                 thread.wait(9000)
