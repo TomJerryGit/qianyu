@@ -26,6 +26,7 @@ class SpectrumWidget(QWidget):
         self._playing = False
         self._levels = [0.0] * BARS
         self._frames: list[tuple[float, tuple[float, ...]]] | None = None
+        self._live_levels: list[float] | None = None
         self._position = 0.0
         self._timer = QTimer(self)
         self._timer.setInterval(33)
@@ -38,31 +39,40 @@ class SpectrumWidget(QWidget):
     def set_frames(self, frames) -> None:
         self._frames = list(frames) if frames else None
 
+    def set_live_levels(self, levels) -> None:
+        self._live_levels = list(levels) if levels else None
+
     def set_position(self, seconds: float) -> None:
         self._position = max(0.0, float(seconds or 0.0))
 
-    def _real_levels(self) -> list[float] | None:
-        if not self._frames:
-            return None
-        index = int(self._position / FRAME_SECONDS)
-        index = max(0, min(index, len(self._frames) - 1))
-        levels = self._frames[index][1]
+    def _map_levels(self, levels) -> list[float]:
         if not levels:
-            return None
+            return []
         result = []
         for bar in range(BARS):
             position = bar / max(1, BARS - 1) * (len(levels) - 1)
             low = int(math.floor(position))
             high = min(len(levels) - 1, low + 1)
             fraction = position - low
-            result.append(levels[low] * (1 - fraction) + levels[high] * fraction)
+            result.append(float(levels[low]) * (1 - fraction) + float(levels[high]) * fraction)
         return result
+
+    def _real_levels(self) -> list[float] | None:
+        if not self._frames:
+            return None
+        index = int(self._position / FRAME_SECONDS)
+        index = max(0, min(index, len(self._frames) - 1))
+        return self._map_levels(self._frames[index][1]) or None
 
     def _advance(self) -> None:
         if not self.isVisible():
             return
-        real = self._real_levels() if self._playing else None
-        if real is not None:
+        live = self._map_levels(self._live_levels) if (self._playing and self._live_levels) else None
+        real = None if live is not None else (self._real_levels() if self._playing else None)
+        if live is not None:
+            for index, target in enumerate(live):
+                self._levels[index] += (target - self._levels[index]) * 0.45
+        elif real is not None:
             for index, target in enumerate(real):
                 self._levels[index] += (target - self._levels[index]) * 0.45
         else:

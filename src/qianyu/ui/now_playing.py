@@ -13,7 +13,8 @@ from ..qt import (
 from ..core.models import Track
 from ..core.artist_image import fetch_artist_image
 from ..core.cover_cache import fetch_cover
-from ..core.spectrum_analyzer import analyze_file
+from ..core.spectrum_analyzer import analyze_file, analyze_pcm
+from ..core.wasapi_loopback import WasapiLoopback
 from .spectrum import SpectrumWidget
 
 
@@ -27,6 +28,29 @@ class SpectrumAnalyzerThread(QThread):
     def run(self) -> None:
         frames = analyze_file(self._path, cancelled=self.isInterruptionRequested)
         self.analysed.emit(frames)
+
+
+class WasapiSpectrumThread(QThread):
+    levels = pyqtSignal(list)
+
+    def run(self) -> None:
+        loop = WasapiLoopback()
+        try:
+            loop.start()
+            while not self.isInterruptionRequested():
+                pcm = loop.read()
+                if pcm:
+                    frames = analyze_pcm(pcm)
+                    if frames:
+                        self.levels.emit(list(frames[-1][1]))
+                self.msleep(80)
+        except Exception:
+            pass
+        finally:
+            try:
+                loop.stop()
+            except Exception:
+                pass
 
 
 class CoverImageThread(QThread):
@@ -69,6 +93,7 @@ class NowPlayingPage(QWidget):
         self._artist_thread: ArtistImageThread | None = None
         self._cover_thread: CoverImageThread | None = None
         self._spectrum_thread: SpectrumAnalyzerThread | None = None
+        self._loopback_thread: WasapiSpectrumThread | None = None
         self._artist_token = 0
         self._cover_token = 0
         self._spectrum_token = 0
@@ -135,9 +160,14 @@ class NowPlayingPage(QWidget):
         meta = " · ".join(part for part in (track.artist, track.album) if part)
         self._meta.setText(meta or Path(track.path).parent.name)
         self._spectrum.set_frames(None)
+        self._spectrum.set_live_levels(None)
         path = str(track.path or "")
         if path and not path.lower().startswith(("http://", "https://")) and Path(path).is_file():
+            self._stop_loopback()
             self._start_spectrum_analysis(path)
+        else:
+            self._stop_spectrum_analysis()
+            self._start_loopback()
         if str(track.cover or "").lower().startswith(("http://", "https://")):
             self._load_remote_cover(track.cover)
             return
@@ -237,6 +267,25 @@ class NowPlayingPage(QWidget):
         self._spectrum_thread = thread
         thread.start()
 
+    def _stop_spectrum_analysis(self) -> None:
+        self._spectrum_token += 1
+        if self._spectrum_thread is not None and self._spectrum_thread.isRunning():
+            self._spectrum_thread.requestInterruption()
+            self._spectrum_thread.wait(2000)
+
+    def _start_loopback(self) -> None:
+        self._stop_loopback()
+        thread = WasapiSpectrumThread(self)
+        thread.levels.connect(self._spectrum.set_live_levels)
+        self._loopback_thread = thread
+        thread.start()
+
+    def _stop_loopback(self) -> None:
+        if self._loopback_thread is not None and self._loopback_thread.isRunning():
+            self._loopback_thread.requestInterruption()
+            self._loopback_thread.wait(3000)
+        self._loopback_thread = None
+
     def _on_spectrum(self, token: int, frames) -> None:
         if token != self._spectrum_token:
             return
@@ -261,7 +310,8 @@ class NowPlayingPage(QWidget):
             super().keyPressEvent(event)
 
     def closeEvent(self, event) -> None:
-        for thread in (self._artist_thread, self._cover_thread, self._spectrum_thread):
+        for thread in (self._artist_thread, self._cover_thread, self._spectrum_thread,
+                       self._loopback_thread):
             if thread is not None and thread.isRunning():
                 thread.requestInterruption()
                 thread.wait(6000)
