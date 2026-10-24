@@ -1,106 +1,78 @@
 # 下一步工作安排
 
-更新：2026-10-18  
+更新：2026-10-24  
 仓库：https://github.com/TomJerryGit/qianyu  
 当前 Release：https://github.com/TomJerryGit/qianyu/releases/tag/v0.9.0
 
 ## 当前状态
 
-- SignPath 申请：已提交，等待审核（邮箱 1265338136@qq.com）
+- 签名：**不使用 SignPath**，当前发布物未签名；采用 SHA256 + 源 tag 校验
 - 内存：30 分钟预热后增长 0.0 MB，已收敛
-- 冷启动：旧 `--smoke` 硬退出的偶发 `0xC0000005` 已定位为测试工具竞态；真实事件循环 100/100、新 smoke 50/50、8 小时浸泡 13,952 循环均无崩溃
-- 8 小时：最终构建 77.7 → 76.2 MB（-1.4 MB），通过
-- 功能：冻结，不新增
-- 签名：等 SignPath
+- 冷启动：旧 `--smoke` 竞态已定位；真实事件循环 100/100、8 小时 13,952 循环无崩溃
+- 8 小时：77.7 → 76.2 MB（-1.4 MB），通过
+- 在线：精选电台、分类/国家、模糊/拼音搜索、平台深链、远程媒体库
 
 ## P0 — 本周必须推进
 
-### 1. SignPath 审核跟进（用户）
+### 1. 无签名分发验收（用户 + 开发）
 
-- 每天检查邮箱/垃圾邮件；
-- 7–10 个工作日后无回复，再向 support@signpath.io 跟进；
-- 不要重复提交申请；
-- 不移动 `v0.9.0` tag，不删除 Release。
+- 安装最新包；
+- 验证 SmartScreen 提示与“仍要运行”流程；
+- 用 `SHA256SUMS.txt` 校验安装包；
+- 确认安装/卸载/启动正常；
+- 不把未签名包描述为“已签名”。
 
-**通过标准**：收到通过/拒绝/补充材料邮件，并记录结论。
+**通过标准**：未签名安装包可解释、可校验、可安装。
 
 ### 2. IME 崩溃定位（开发）
 
-当前结论：旧 `--smoke` 的 `os._exit` 与 IME 初始化竞争，是测试工具竞态；真实事件循环 100 次无崩溃，新 smoke 50 次无崩溃。
+- 100 次真实事件循环 + 8 小时浸泡；
+- 微软拼音对照；
+- 新 Qt 干净 venv 测试；
+- 若仍崩溃，抓 WER dump。
 
-仍需：
+**通过标准**：100 次冷启动 0 崩溃 + 8 小时无崩溃。
 
-1. 微软拼音对照（脚本已准备，需手动切换默认输入法）；
-2. 干净 venv 测试较新的 PySide6/Qt；
-3. 8 小时浸泡复测；
-4. 若真实用户仍报告启动崩溃，再抓 Windows Error Reporting dump。
+### 3. UI/搜索验收（开发）
 
-**通过标准**：100 次真实事件循环 + 8 小时浸泡 0 崩溃。
+- 搜索：`zjl`、`zhoujielun`、`singel`；
+- 电台：精选/分类/国家；
+- 平台深链；
+- 远程媒体库（需服务器）。
 
-### 3. 签名 CI 准备（开发，等 SignPath）
+## P1 — 稳定性与体验
 
-通过后需要四个值：
+### 4. 真实服务器联调
 
-- Organization ID
-- Project slug
-- Signing policy slug
-- Artifact configuration slug
+需要用户提供 Navidrome/Jellyfin URL + 测试用户名；密码不上聊天。
 
-收到后：
+### 5. 仓库材料
 
-1. 配 `SIGNPATH_API_TOKEN` 到 GitHub Secret；
-2. 修改 `release.yml`：
-   - 上传 `QianYu.exe` + installer；
-   - 提交签名请求；
-   - 等待人工批准；
-   - 下载已签名产物；
-   - 更新 Release 资产；
-3. 验证：
-   ```powershell
-   Get-AuthenticodeSignature dist\installer\QianYu-0.9.0-setup.exe |
-     Format-List Status, SignerCertificate, TimeStamperCertificate
-   ```
-   期望 `Status=Valid`，签名者 `CN=SignPath Foundation`。
-
-**通过标准**：签名安装包可安装、启动、卸载，且 `Status=Valid`。
-
-## P1 — 审核等待期
-
-### 4. 8 小时浸泡（开发）
-
-- 用当前构建重跑 `spike/soak_8h.py`；
-- 目标：预热后 8 小时 RSS 增长 < 20 MB，无崩溃；
-- 记录 `spike/out/soak_8h.json`。
-
-### 5. 仓库信誉材料（用户 + 开发）
-
-- GitHub About 填描述和 topics；
-- README 加 2–3 张真实截图；
-- Release notes 写清功能、限制、校验值；
-- 不刷 star、不伪造下载量。
+- GitHub About/topics；
+- README 截图；
+- Release notes/校验值。
 
 ## P2 — 稳定性通过后
 
-只有在 100 次冷启动 + 8 小时浸泡通过后才恢复：
-
-- 批量标签/智能列表增强；
-- CUE 多文件细节；
-- 在线封面/歌词重试缓存；
+- 搜索词高亮；
+- 首次启动兴趣频道；
+- 批量标签/智能列表；
+- CUE 细节；
 - 视频控制条折叠；
-- 10k 首屏继续优化。
+- 10k 首屏优化。
 
 ## 里程碑
 
 | 里程碑 | 条件 |
 |---|---|
-| M1 SignPath 结果 | 收到审核邮件 |
-| M2 启动稳定 | 100 次冷启动 0 崩溃 |
-| M3 签名发布 | 安装包 `Status=Valid` |
-| M4 1.0 | M2 + M3 + 8 小时浸泡 + 真实安装卸载 |
+| M1 无签名分发 | 校验/安装/卸载通过 |
+| M2 启动稳定 | 100 次 + 8 小时 0 崩溃 |
+| M3 在线验收 | 电台/搜索/远程可用 |
+| M4 1.0 | M1 + M2 + M3 |
 
 ## 不要做
 
-- 不要用自签名冒充生产签名；
-- 不要为了通过审核伪造用户量/媒体报道；
-- 不要在崩溃未定位时继续堆功能；
-- 不要移动或删除已提交的 Release tag。
+- 不用自签名冒充生产签名；
+- 不把未签名包标成“可信发布者”；
+- 不伪造用户量/媒体报道；
+- 不移动或删除已提交的 Release tag。

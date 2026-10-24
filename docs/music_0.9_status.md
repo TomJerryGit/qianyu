@@ -160,6 +160,8 @@
 
 **Round 48 新增**：拼音索引持久化（tracks.pinyin + 后台回填），拼音搜索不再每次全库计算；单测增至 71。
 
+**Round 49 新增**：移除 SignPath 依赖；改为未签名分发 + SHA256/源 tag 校验，保留未来自有 Authenticode 证书选项。
+
 **Round 31 新增**：Radio Browser 网络电台搜索/播放、网络流地址播放；单测增至 35。
 
 **实测数据（`spike/ui_smoke.py`）**：

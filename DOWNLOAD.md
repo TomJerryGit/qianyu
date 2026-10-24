@@ -11,13 +11,19 @@ QianYu 0.9.0 is a Windows music/video player.
 - Release page:
   https://github.com/TomJerryGit/qianyu/releases/tag/v0.9.0
 
-## Code signing
+## Build integrity
 
-Free code signing provided by [SignPath.io](https://about.signpath.io),
-certificate by [SignPath Foundation](https://signpath.org).
+QianYu does not use SignPath or any third-party free signing service.
+Current builds are **unsigned**; Windows SmartScreen may show a warning.
 
-Current 0.9.0 assets are unsigned Release Candidates until signing approval;
-signed builds will replace them.
+Verify the SHA-256 checksums published on the release page:
+`SHA256SUMS.txt`.
+
+The source tag and GitHub Actions build log are public. Optional Authenticode
+signing may be added later with a project-owned certificate; it is not a
+prerequisite for building, updating or distributing QianYu.
+
+See [docs/unsigned_distribution.md](docs/unsigned_distribution.md).
 
 ## Verification
 
