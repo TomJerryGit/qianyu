@@ -145,6 +145,7 @@ tests/unit/      单元测试
 - [三种使用形态](docs/ui_modes.md)
 - [在线功能路线](docs/online_features.md)
 - [Navidrome 真实联调记录](docs/navidrome_integration.md)
+- [Jellyfin 联调与安装说明](docs/jellyfin_integration.md)
 - [在线内容与版权合规](docs/online_compliance.md)
 - [版权声明](COPYRIGHT)
 - [第三方内容/服务声明](NOTICE)
