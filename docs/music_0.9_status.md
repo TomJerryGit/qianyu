@@ -172,7 +172,7 @@
 
 **Round 54 新增**：Jellyfin mock 协议联调（登录/搜索/专辑/串流）；真实服务器安装受 199 MB 下载速度限制，待完成。
 
-**Round 55 新增**：远程专辑封面异步加载、专辑信息预览；Navidrome 真实联调纳入 CI（`navidrome-integration.yml`）。
+**Round 55 新增**：远程专辑封面异步加载、专辑信息预览；Navidrome 真实联调 CI 已通过（run 40104142606）。
 
 **Round 31 新增**：Radio Browser 网络电台搜索/播放、网络流地址播放；单测增至 35。
 

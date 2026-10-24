@@ -85,6 +85,17 @@ QianYu 的 Subsonic 客户端已通过真实 Navidrome 的：
 python tools\navidrome_integration.py
 ```
 
+## CI 结果
+
+```
+workflow: navidrome-integration
+commit:   6668e03
+run:      40104142606
+result:   success
+```
+
+CI 日志与 `navidrome_integration.json` 作为 artifact 上传。
+
 ## 说明
 
 - 测试使用临时端口/临时数据目录，不修改用户现有 Navidrome 数据；
