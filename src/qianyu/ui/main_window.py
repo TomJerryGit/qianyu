@@ -48,6 +48,7 @@ from .theme_color import dominant_color
 from ..core.cue import parse_cue
 from ..core.metadata import fetch_cover, lookup_recording
 from ..core.radio import RadioStation
+from ..core.radio_presets import preset_stations
 from ..core.podcast import Episode
 from ..core.podcast_cache import PodcastCache
 from ..core.subsonic import RemoteSong
@@ -1717,6 +1718,8 @@ class MainWindow(QMainWindow):
                 if station is not None and station.url not in seen:
                     result.append(station)
                     seen.add(station.url)
+        if not result:
+            result = preset_stations()
         return result[:6]
 
     def _show_radio_view(self, station: RadioStation) -> None:

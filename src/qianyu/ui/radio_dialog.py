@@ -13,6 +13,7 @@ from ..qt import (
     QVBoxLayout, QAbstractItemView, Qt, pyqtSignal,
 )
 from ..core.radio import RadioStation, search_stations
+from ..core.radio_presets import preset_stations
 
 
 class RadioSearchThread(QThread):
@@ -85,6 +86,8 @@ class RadioDialog(QDialog):
         favorites.clicked.connect(self._show_favorites)
         recent = QPushButton("最近收听")
         recent.clicked.connect(self._show_recent)
+        curated = QPushButton("精选电台")
+        curated.clicked.connect(self._show_presets)
         export = QPushButton("导出")
         export.clicked.connect(self._export_favorites)
         import_button = QPushButton("导入")
@@ -96,6 +99,7 @@ class RadioDialog(QDialog):
         bottom.addWidget(favorite)
         bottom.addWidget(favorites)
         bottom.addWidget(recent)
+        bottom.addWidget(curated)
         bottom.addWidget(export)
         bottom.addWidget(import_button)
         bottom.addStretch(1)
@@ -122,6 +126,13 @@ class RadioDialog(QDialog):
         self._stations = list(stations)
         self._render_stations()
         self._status.setText(f"找到 {len(self._stations)} 个电台。" if self._stations else "没有找到电台。")
+
+    def _show_presets(self) -> None:
+        self._stations = preset_stations()
+        self._render_stations()
+        self._status.setText(
+            f"精选公开电台：{len(self._stations)} 个。版权归各电台，仅供在线收听。"
+        )
 
     def _render_stations(self) -> None:
         self._table.setRowCount(len(self._stations))
