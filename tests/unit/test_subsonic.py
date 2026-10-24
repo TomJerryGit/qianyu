@@ -71,6 +71,27 @@ class SubsonicTests(unittest.TestCase):
             with self.assertRaises(SubsonicError):
                 client.ping()
 
+    def test_albums(self):
+        albums_payload = {"subsonic-response": {
+            "status": "ok",
+            "albumList2": {"album": [{"id": "a1", "name": "Album", "artist": "Artist",
+                                      "year": 2024, "songCount": 2, "coverArt": "c1"}]},
+        }}
+        songs_payload = {"subsonic-response": {
+            "status": "ok",
+            "album": {"name": "Album", "song": [{"id": "s1", "title": "Song",
+                                                 "duration": 60}]},
+        }}
+        client = SubsonicClient("https://music.example.com", "user", "pass")
+        responses = [_Response(albums_payload), _Response(songs_payload)]
+        with patch("qianyu.core.subsonic.urllib.request.urlopen", side_effect=responses):
+            albums = client.albums()
+            songs = client.album_songs("a1")
+        self.assertEqual(len(albums), 1)
+        self.assertEqual(albums[0].name, "Album")
+        self.assertEqual(len(songs), 1)
+        self.assertEqual(songs[0].album, "Album")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

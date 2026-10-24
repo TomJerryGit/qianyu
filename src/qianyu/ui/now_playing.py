@@ -12,7 +12,21 @@ from ..qt import (
 )
 from ..core.models import Track
 from ..core.artist_image import fetch_artist_image
+from ..core.cover_cache import fetch_cover
 from .spectrum import SpectrumWidget
+
+
+class CoverImageThread(QThread):
+    loaded = pyqtSignal(str)
+
+    def __init__(self, url: str, cache_dir, parent=None):
+        super().__init__(parent)
+        self._url = url
+        self._cache_dir = cache_dir
+
+    def run(self) -> None:
+        path = fetch_cover(self._url, self._cache_dir, timeout=4.0)
+        self.loaded.emit(str(path) if path is not None else "")
 
 
 class ArtistImageThread(QThread):
@@ -40,7 +54,9 @@ class NowPlayingPage(QWidget):
         self.setAttribute(Qt.WA_DeleteOnClose, False)
         self._cache_dir = cache_dir
         self._artist_thread: ArtistImageThread | None = None
+        self._cover_thread: CoverImageThread | None = None
         self._artist_token = 0
+        self._cover_token = 0
         self._track: Track | None = None
         self._background = QLabel(self)
         self._background.setScaledContents(True)
@@ -103,6 +119,9 @@ class NowPlayingPage(QWidget):
         self._title.setText(track.title or Path(track.path).stem)
         meta = " · ".join(part for part in (track.artist, track.album) if part)
         self._meta.setText(meta or Path(track.path).parent.name)
+        if str(track.cover or "").lower().startswith(("http://", "https://")):
+            self._load_remote_cover(track.cover)
+            return
         pixmap = QPixmap(track.cover) if track.cover else QPixmap()
         if pixmap.isNull():
             self._cover.setPixmap(QPixmap())
@@ -112,6 +131,23 @@ class NowPlayingPage(QWidget):
             return
         self._apply_cover(pixmap)
 
+    def _load_remote_cover(self, url: str) -> None:
+        self._cover.setText("♪")
+        self._cover.setPixmap(QPixmap())
+        self._background.setPixmap(QPixmap())
+        if not self._cache_dir:
+            self._load_artist_image(self._track) if self._track is not None else None
+            return
+        self._cover_token += 1
+        token = self._cover_token
+        if self._cover_thread is not None and self._cover_thread.isRunning():
+            self._cover_thread.requestInterruption()
+            self._cover_thread.wait(5000)
+        thread = CoverImageThread(url, self._cache_dir, self)
+        thread.loaded.connect(lambda path: self._on_remote_cover(token, path))
+        self._cover_thread = thread
+        thread.start()
+
     def _apply_cover(self, pixmap: QPixmap) -> None:
         self._cover.setText("")
         self._background.setPixmap(pixmap.scaled(
@@ -120,6 +156,15 @@ class NowPlayingPage(QWidget):
         self._cover.setPixmap(pixmap.scaled(
             QSize(380, 380), Qt.KeepAspectRatio, Qt.SmoothTransformation
         ))
+
+    def _on_remote_cover(self, token: int, path: str) -> None:
+        if token != self._cover_token or not path:
+            return
+        pixmap = QPixmap(path)
+        if not pixmap.isNull():
+            self._apply_cover(pixmap)
+        elif self._track is not None:
+            self._load_artist_image(self._track)
 
     def _load_artist_image(self, track: Track) -> None:
         folder = Path(track.path).parent
@@ -177,8 +222,9 @@ class NowPlayingPage(QWidget):
             super().keyPressEvent(event)
 
     def closeEvent(self, event) -> None:
-        if self._artist_thread is not None and self._artist_thread.isRunning():
-            self._artist_thread.requestInterruption()
-            self._artist_thread.wait(6000)
+        for thread in (self._artist_thread, self._cover_thread):
+            if thread is not None and thread.isRunning():
+                thread.requestInterruption()
+                thread.wait(6000)
         self.closed.emit()
         super().closeEvent(event)

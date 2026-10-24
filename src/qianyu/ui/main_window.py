@@ -41,6 +41,7 @@ from .radio_dialog import RadioDialog
 from .podcast_dialog import PodcastDialog
 from .remote_dialog import RemoteDialog, make_client
 from .radio_window import RadioWindow
+from .remote_album_dialog import RemoteAlbumDialog
 from .unified_search import UnifiedSearchDialog
 from .tag_dialog import TagEditDialog
 from .theme_color import dominant_color
@@ -130,6 +131,8 @@ class MainWindow(QMainWindow):
         self._radio_retries = 0
         self._radio_stream_title = ""
         self._radio_window: RadioWindow | None = None
+        self._remote_queue: list[Track] = []
+        self._remote_queue_index = -1
         self._lyrics = []
         self._lyrics_index = -1
         self._lyrics_offset_ms = 0
@@ -443,6 +446,7 @@ class MainWindow(QMainWindow):
         online_menu.addAction("经典电台窗口", self._show_radio_window)
         online_menu.addAction("播客…", self._show_podcasts)
         online_menu.addAction("远程媒体库…", self._show_remote)
+        online_menu.addAction("远程专辑…", self._show_remote_albums)
         online_menu.addAction("打开网络流…", self._open_stream)
 
         playback = self.menuBar().addMenu("播放")
@@ -1032,6 +1036,8 @@ class MainWindow(QMainWindow):
         self._podcast_url = None
         self._radio_station = None
         self._radio_stream_title = ""
+        self._remote_queue = []
+        self._remote_queue_index = -1
         if self._radio_window is not None:
             self._radio_window.hide()
         self._scrobbler.track_started(track)
@@ -1227,6 +1233,8 @@ class MainWindow(QMainWindow):
 
     def _stop_playback(self) -> None:
         self._radio_station = None
+        self._remote_queue = []
+        self._remote_queue_index = -1
         self._engine.stop()
         self._progress.setValue(0)
         self._time.setText("00:00 / 00:00")
@@ -1346,7 +1354,10 @@ class MainWindow(QMainWindow):
             else:
                 self._status.showMessage(f"播放错误：{event.value}")
         elif event.kind == "eof":
-            if self._radio_station is not None and self._radio_retries < 3:
+            if self._remote_queue and self._remote_queue_index + 1 < len(self._remote_queue):
+                next_index = self._remote_queue_index + 1
+                QTimer.singleShot(0, lambda: self._play_remote_queue_at(next_index))
+            elif self._radio_station is not None and self._radio_retries < 3:
                 self._radio_retries += 1
                 QTimer.singleShot(1500, self._retry_radio)
         elif event.kind == "index":
@@ -1668,7 +1679,7 @@ class MainWindow(QMainWindow):
             artist=item.artist,
             album=item.album or "Jellyfin",
             duration=item.duration,
-            cover="",
+            cover=client.cover_url(item),
         )
         self._play_online_track(track, f"Jellyfin：{item.title}")
 
@@ -1737,6 +1748,77 @@ class MainWindow(QMainWindow):
         dialog.play_requested.connect(self._play_remote_song)
         dialog.exec()
 
+    def _show_remote_albums(self) -> None:
+        dialog = RemoteAlbumDialog(self._config, self)
+        dialog.queue_requested.connect(self._play_remote_album)
+        dialog.exec()
+
+    def _play_remote_album(self, songs: list, index: int) -> None:
+        tracks: list[Track] = []
+        subsonic = make_client(self._config)
+        jellyfin = None
+        for song in songs:
+            if isinstance(song, RemoteSong):
+                try:
+                    url = subsonic.stream_url(song)
+                except Exception:
+                    continue
+                tracks.append(Track(path=url, title=song.title, artist=song.artist,
+                                    album=song.album or "远程媒体库",
+                                    duration=song.duration,
+                                    cover=subsonic.cover_url(song)))
+            elif isinstance(song, JellyfinItem):
+                if jellyfin is None:
+                    jellyfin = JellyfinClient(
+                        str(self._config.get("jellyfin_url", "")),
+                        str(self._config.get("jellyfin_user", "")),
+                        self._secrets.get("jellyfin_password"),
+                        self._secrets.get("jellyfin_token"),
+                        str(self._config.get("jellyfin_user_id", "")),
+                    )
+                    try:
+                        if not jellyfin.token or not jellyfin.user_id:
+                            jellyfin.login()
+                            self._secrets.set("jellyfin_token", jellyfin.token)
+                            self._config.set("jellyfin_user_id", jellyfin.user_id)
+                    except Exception:
+                        return
+                tracks.append(Track(path=jellyfin.stream_url(song), title=song.title,
+                                    artist=song.artist, album=song.album or "Jellyfin",
+                                    duration=song.duration,
+                                    cover=jellyfin.cover_url(song)))
+        if not tracks:
+            self._status.showMessage("远程专辑没有可播放曲目")
+            return
+        self._remote_queue = tracks
+        self._play_remote_queue_at(max(0, min(index, len(tracks) - 1)))
+
+    def _play_remote_queue_at(self, index: int) -> None:
+        if not (0 <= index < len(self._remote_queue)):
+            return
+        self._remote_queue_index = index
+        track = self._remote_queue[index]
+        self._save_podcast_progress()
+        self._podcast_url = None
+        self._radio_station = None
+        self._radio_stream_title = ""
+        self._scrobbler.stop()
+        self._cue_tracks = None
+        self._cue_sheet = None
+        self._current = track
+        self._set_now_playing(track)
+        self._lyrics = []
+        self._lyrics_view.clear()
+        self._update_now_page()
+        self._progress.setValue(0)
+        self._time.setText("00:00 / 00:00")
+        try:
+            self._engine.play(track.path)
+        except Exception as exc:
+            self._status.showMessage(f"远程播放失败：{exc}")
+            return
+        self._status.showMessage(f"远程：{track.title}（{index + 1}/{len(self._remote_queue)}）")
+
     def _play_remote_song(self, song: RemoteSong) -> None:
         client = make_client(self._config)
         try:
@@ -1750,7 +1832,7 @@ class MainWindow(QMainWindow):
             artist=song.artist,
             album=song.album or "远程媒体库",
             duration=song.duration,
-            cover="",
+            cover=client.cover_url(song),
         )
         self._play_online_track(track, f"远程：{song.title}")
 
@@ -1821,6 +1903,8 @@ class MainWindow(QMainWindow):
     def _play_online_track(self, track: Track, status: str) -> None:
         if self._radio_window is not None:
             self._radio_window.hide()
+        self._remote_queue = []
+        self._remote_queue_index = -1
         self._scrobbler.stop()
         self._save_podcast_progress()
         self._podcast_url = None

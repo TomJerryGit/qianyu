@@ -62,6 +62,22 @@ class JellyfinTests(unittest.TestCase):
             with self.assertRaises(JellyfinError):
                 client.login()
 
+    def test_albums(self):
+        albums = {"Items": [{"Id": "a1", "Name": "Album", "AlbumArtist": "Artist",
+                             "ProductionYear": 2024, "ChildCount": 2}]}
+        songs = {"Items": [{"Id": "s1", "Name": "Song", "Artists": ["Artist"],
+                            "Album": "Album", "RunTimeTicks": 600000000}]}
+        client = JellyfinClient("https://jf.example.com", "user", "pass",
+                                token="tok", user_id="user1")
+        with patch("qianyu.core.jellyfin.urllib.request.urlopen",
+                   side_effect=[_Response(albums), _Response(songs)]):
+            albums_result = client.albums()
+            songs_result = client.album_songs("a1")
+        self.assertEqual(len(albums_result), 1)
+        self.assertEqual(albums_result[0].name, "Album")
+        self.assertEqual(len(songs_result), 1)
+        self.assertEqual(songs_result[0].duration, 60)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

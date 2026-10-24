@@ -23,6 +23,15 @@ class JellyfinItem:
     duration: float = 0.0
 
 
+@dataclass(frozen=True)
+class JellyfinAlbum:
+    id: str
+    name: str
+    artist: str = ""
+    year: int = 0
+    song_count: int = 0
+
+
 def normalize_server(url: str) -> str:
     url = str(url or "").strip().rstrip("/")
     if not url.lower().startswith(("http://", "https://")):
@@ -115,6 +124,66 @@ class JellyfinClient:
                 "SortOrder": "Ascending",
             },
         )
+        return self._parse_items(body)
+
+    def albums(self, limit: int = 50) -> list[JellyfinAlbum]:
+        if not self.token or not self.user_id:
+            self.login()
+        body = self._request(
+            f"/Users/{self.user_id}/Items",
+            params={
+                "IncludeItemTypes": "MusicAlbum",
+                "Recursive": "true",
+                "Fields": "AlbumArtist,ProductionYear,ChildCount",
+                "Limit": max(1, min(int(limit), 100)),
+                "SortBy": "SortName",
+                "SortOrder": "Ascending",
+            },
+        )
+        items = body.get("Items") or []
+        result: list[JellyfinAlbum] = []
+        if not isinstance(items, list):
+            return result
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            album_id = str(item.get("Id") or "").strip()
+            if not album_id:
+                continue
+            try:
+                year = int(item.get("ProductionYear") or 0)
+            except (TypeError, ValueError):
+                year = 0
+            try:
+                count = int(item.get("ChildCount") or 0)
+            except (TypeError, ValueError):
+                count = 0
+            result.append(JellyfinAlbum(
+                id=album_id,
+                name=str(item.get("Name") or "Unknown album").strip(),
+                artist=str(item.get("AlbumArtist") or "").strip(),
+                year=year,
+                song_count=count,
+            ))
+        return result
+
+    def album_songs(self, album_id: str) -> list[JellyfinItem]:
+        if not self.token or not self.user_id:
+            self.login()
+        body = self._request(
+            f"/Users/{self.user_id}/Items",
+            params={
+                "ParentId": album_id,
+                "IncludeItemTypes": "Audio",
+                "Recursive": "true",
+                "Fields": "Artists,Album,RunTimeTicks",
+                "SortBy": "ParentIndexNumber,IndexNumber,SortName",
+                "SortOrder": "Ascending",
+            },
+        )
+        return self._parse_items(body)
+
+    def _parse_items(self, body: dict) -> list[JellyfinItem]:
         items = body.get("Items") or []
         if not isinstance(items, list):
             return []

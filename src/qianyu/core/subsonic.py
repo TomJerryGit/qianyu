@@ -35,6 +35,25 @@ class RemoteSong:
         return f"{self.title} — {details}" if details else self.title
 
 
+@dataclass(frozen=True)
+class RemoteAlbum:
+    id: str
+    name: str
+    artist: str = ""
+    year: int = 0
+    song_count: int = 0
+    cover_id: str = ""
+
+    @property
+    def display(self) -> str:
+        parts = [self.name]
+        if self.artist:
+            parts.append(self.artist)
+        if self.year:
+            parts.append(str(self.year))
+        return " · ".join(parts)
+
+
 def normalize_server(url: str) -> str:
     url = str(url or "").strip().rstrip("/")
     if not url:
@@ -138,7 +157,74 @@ class SubsonicClient:
     def stream_url(self, song: RemoteSong) -> str:
         return self._url("stream", id=song.id)
 
-    def cover_url(self, song: RemoteSong) -> str:
-        if not song.cover_id:
+    def albums(self, limit: int = 50, offset: int = 0,
+               order: str = "alphabeticalByName") -> list[RemoteAlbum]:
+        body = self._request(
+            "getAlbumList2",
+            type=order,
+            size=max(1, min(int(limit), 100)),
+            offset=max(0, int(offset)),
+        )
+        result = body.get("albumList2") or {}
+        albums = result.get("album") or []
+        if isinstance(albums, dict):
+            albums = [albums]
+        parsed: list[RemoteAlbum] = []
+        for item in albums:
+            if not isinstance(item, dict):
+                continue
+            album_id = str(item.get("id") or "").strip()
+            if not album_id:
+                continue
+            try:
+                year = int(item.get("year") or 0)
+            except (TypeError, ValueError):
+                year = 0
+            try:
+                song_count = int(item.get("songCount") or 0)
+            except (TypeError, ValueError):
+                song_count = 0
+            parsed.append(RemoteAlbum(
+                id=album_id,
+                name=str(item.get("name") or "Unknown album").strip(),
+                artist=str(item.get("artist") or "").strip(),
+                year=year,
+                song_count=song_count,
+                cover_id=str(item.get("coverArt") or "").strip(),
+            ))
+        return parsed
+
+    def album_songs(self, album_id: str) -> list[RemoteSong]:
+        body = self._request("getAlbum", id=album_id)
+        album = body.get("album") or {}
+        songs = album.get("song") or []
+        if isinstance(songs, dict):
+            songs = [songs]
+        parsed: list[RemoteSong] = []
+        for item in songs:
+            if not isinstance(item, dict):
+                continue
+            song_id = str(item.get("id") or "").strip()
+            if not song_id:
+                continue
+            try:
+                duration = float(item.get("duration") or 0)
+            except (TypeError, ValueError):
+                duration = 0.0
+            parsed.append(RemoteSong(
+                id=song_id,
+                title=str(item.get("title") or "Unknown").strip(),
+                artist=str(item.get("artist") or "").strip(),
+                album=str(item.get("album") or album.get("name") or "").strip(),
+                duration=duration,
+                cover_id=str(item.get("coverArt") or "").strip(),
+            ))
+        return parsed
+
+    def cover_url_for(self, cover_id: str) -> str:
+        if not cover_id:
             return ""
-        return self._url("getCoverArt", id=song.cover_id)
+        return self._url("getCoverArt", id=cover_id)
+
+    def cover_url(self, song: RemoteSong) -> str:
+        return self.cover_url_for(song.cover_id)
