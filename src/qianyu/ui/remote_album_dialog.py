@@ -6,8 +6,8 @@ from __future__ import annotations
 
 from ..qt import (
     QAbstractItemView, QComboBox, QDialog, QHBoxLayout, QHeaderView, QLabel,
-    QMessageBox, QPushButton, QSplitter, QTableWidget, QTableWidgetItem,
-    QThread, QVBoxLayout, Qt, pyqtSignal,
+    QLineEdit, QMessageBox, QPushButton, QSplitter, QTableWidget,
+    QTableWidgetItem, QThread, QVBoxLayout, Qt, pyqtSignal,
 )
 from ..core.jellyfin import JellyfinClient, JellyfinError
 from ..core.secure_store import SecretStore
@@ -83,6 +83,7 @@ class RemoteAlbumDialog(QDialog):
         self.resize(900, 620)
         self._config = config
         self._albums: list = []
+        self._all_albums: list = []
         self._songs: list = []
         self._threads: list[QThread] = []
 
@@ -93,10 +94,17 @@ class RemoteAlbumDialog(QDialog):
         self._provider.addItem("Jellyfin", "jellyfin")
         load = QPushButton("加载专辑")
         load.clicked.connect(self._load_albums)
+        refresh = QPushButton("刷新")
+        refresh.clicked.connect(self._load_albums)
+        self._filter = QLineEdit()
+        self._filter.setPlaceholderText("筛选专辑/艺术家")
+        self._filter.textChanged.connect(self._apply_filter)
         self._status = QLabel("选择服务器后加载专辑。")
         self._status.setObjectName("stats")
         top.addWidget(self._provider)
         top.addWidget(load)
+        top.addWidget(refresh)
+        top.addWidget(self._filter, 1)
         top.addWidget(self._status, 1)
         layout.addLayout(top)
 
@@ -150,6 +158,21 @@ class RemoteAlbumDialog(QDialog):
         thread.start()
 
     def _show_albums(self, albums: list) -> None:
+        self._all_albums = list(albums)
+        self._apply_filter()
+        self._status.setText(f"{len(self._all_albums)} 张专辑。")
+        if self._albums:
+            self._album_table.selectRow(0)
+
+    def _apply_filter(self) -> None:
+        needle = self._filter.text().strip().casefold() if hasattr(self, "_filter") else ""
+        albums = self._all_albums
+        if needle:
+            albums = [
+                album for album in albums
+                if needle in str(album.name).casefold()
+                or needle in str(album.artist).casefold()
+            ]
         self._albums = list(albums)
         self._album_table.setRowCount(len(self._albums))
         for row, album in enumerate(self._albums):
@@ -158,7 +181,8 @@ class RemoteAlbumDialog(QDialog):
             self._album_table.setItem(row, 2, QTableWidgetItem(str(album.year or "")))
             self._album_table.setItem(row, 3, QTableWidgetItem(str(album.song_count or "")))
             self._album_table.item(row, 0).setData(Qt.UserRole, album)
-        self._status.setText(f"{len(self._albums)} 张专辑。")
+        if needle:
+            self._status.setText(f"筛选出 {len(self._albums)} / {len(self._all_albums)} 张专辑。")
         if self._albums:
             self._album_table.selectRow(0)
 
