@@ -174,6 +174,8 @@
 
 **Round 55 新增**：远程专辑封面异步加载、专辑信息预览；Navidrome 真实联调 CI 已通过（run 40104142606）。
 
+**Round 56 新增**：真实 Jellyfin 12.3 联调通过（启动向导/登录/搜索/专辑/曲目/串流）；修复 Jellyfin 12.3 `Authorization` token 头；单测增至 75。
+
 **Round 31 新增**：Radio Browser 网络电台搜索/播放、网络流地址播放；单测增至 35。
 
 **实测数据（`spike/ui_smoke.py`）**：
@@ -269,7 +271,7 @@ MINI True single_tone
 2. **封面只验证了同名 `cover.jpg`**：内嵌 APIC/FLAC picture/MP4 covr 的提取代码已写，但未用真实带封面的 MP3/FLAC 验证。
 3. **PyQt5 GPL**：发布包默认已切 PySide6 6.8.3 / Python 3.11；PyQt5 仅保留 Python 3.8 回退。LGPL 合规清单仍待整理。
 4. **Python 3.8**：本机 3.8.9，已 EOL；1.0 前升 3.11/3.12。
-5. **测试覆盖有限**：74 个单测 + 1 个 UI 冒烟 + 1 个基准；有 gapless/EQ 金标准，但无浸泡/兼容矩阵。
+5. **测试覆盖有限**：75 个单测 + 1 个 UI 冒烟 + 1 个基准；有 gapless/EQ 金标准，但无浸泡/兼容矩阵。
 6. **安装包/更新**：`install.ps1` 已用 PySide6 包完成真实安装/启动/卸载；Inno 6.7.3 已编译 `dist\installer\QianYu-0.9.0-setup.exe`（61.2 MB，PySide6/6.8.3）。生产安装器使用 `CreateUninstallRegKey=no` + HKCU best effort 卸载项，注册表被拒时安装不再回滚；真实桌面验收仍待做。manifest 支持 Ed25519，安装包本身未签名。
 7. **性能基线有数据但未入门禁**：1 万曲搜索 17.7–28 ms、模型刷新 64 ms；100 首队列可完成，耗时受负载波动；尚未在 CI 设阈值。
 8. **桌面歌词暂无锁定/鼠标穿透**；需要真机验证多屏。

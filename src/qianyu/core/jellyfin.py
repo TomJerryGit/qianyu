@@ -57,11 +57,14 @@ class JellyfinClient:
     def configured(self) -> bool:
         return bool(self.server)
 
-    def _auth_header(self) -> str:
-        return (
+    def _auth_header(self, include_token: bool = False) -> str:
+        header = (
             f'MediaBrowser Client="QianYu", Device="Windows", '
             f'DeviceId="{DEVICE_ID}", Version="0.9.0"'
         )
+        if include_token and self.token:
+            header += f', Token="{self.token}"'
+        return header
 
     def _request(self, path: str, params: dict | None = None,
                  body: dict | None = None, auth: bool = True) -> dict:
@@ -72,6 +75,7 @@ class JellyfinClient:
         headers = {
             "User-Agent": USER_AGENT,
             "Accept": "application/json",
+            "Authorization": self._auth_header(include_token=bool(auth and self.token)),
             "X-Emby-Authorization": self._auth_header(),
         }
         if auth and self.token:

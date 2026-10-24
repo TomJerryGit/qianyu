@@ -1,112 +1,117 @@
 # Jellyfin 真实联调
 
-## 当前状态
+日期：2026-10-24  
+服务器：Jellyfin 12.3.0（Windows amd64，官方 ZIP）  
+客户端：QianYu `JellyfinClient`  
+协议：Jellyfin HTTP API
 
-- Jellyfin 客户端：已实现并通过 **mock 协议测试**；
-- 本地 Jellyfin Server：**尚未安装完成**；
-- 原因：官方 Windows 包约 **199 MB**，当前网络镜像约 20–30 KB/s，下载时间不可接受。
+## 测试方式
 
-Mock 测试结果：
+脚本：
+
+```powershell
+python tools\jellyfin_integration.py
+```
+
+流程：
+
+1. 启动临时 Jellyfin 服务器（127.0.0.1:8096）；
+2. 等待 Startup Wizard API；
+3. 创建管理员 `qianyu`；
+4. 完成启动向导；
+5. 添加音乐库；
+6. 生成带 ID3 标签的测试 MP3；
+7. 等待扫描；
+8. 登录、搜索、专辑、专辑曲目、音频串流；
+9. 关闭服务器。
+
+## 实测结果
 
 ```json
 {
   "login": true,
   "songs": 1,
   "albums": 1,
-  "album_songs": 1,
-  "stream": true
+  "album_tracks": 1,
+  "stream": true,
+  "stream_bytes": 4096
 }
 ```
 
-脚本：
+日志：
 
 ```
-D:\qianyu\tools\jellyfin_mock_integration.py
+PUBLIC_READY
+STARTUP_READY
+CONFIG 204
+FIRST_USER 200 {'Name': 'PL'}
+USER 204
+REMOTE 204
+COMPLETE 204
+RAW_LOGIN 200
+LOGIN token=True
+LIBRARY 204
+REFRESH 204
+SEARCH 1 ALBUMS 1
+ALBUM_SONGS 1
+RESULT {"login": true, "songs": 1, "albums": 1, "album_tracks": 1,
+         "stream": true, "stream_bytes": 4096}
+SERVER_STOPPED
 ```
 
-## 安装真实 Jellyfin
+## 联调发现并修复的问题
 
-官方 Windows 包：
-
-```
-https://repo.jellyfin.org/files/server/windows/latest-stable/amd64/jellyfin_12.3-amd64.zip
-```
-
-镜像：
+Jellyfin 12.3 不再只接受：
 
 ```
-https://sgp1.mirror.jellyfin.org/files/server/windows/stable/v12.3/amd64/jellyfin_12.3-amd64.zip
+X-Emby-Authorization
 ```
 
-步骤：
-
-1. 下载 ZIP；
-2. 解压到 `D:\qianyu\tools\jellyfin-server`；
-3. 运行 `jellyfin.exe`；
-4. 浏览器打开 `http://127.0.0.1:8096`；
-5. 完成首次设置：管理员账号、媒体库（音乐目录）；
-6. 等待扫描完成。
-
-## 下载
-
-后台下载/续传脚本（单连接）：
-
-```powershell
-python tools\download_jellyfin.py
-```
-
-并行分片下载（推荐，支持断点续传）：
-
-```powershell
-python tools\download_jellyfin_parallel.py
-```
-
-当前镜像约 20–30 KB/s；完成后校验 SHA-256：
+还需要在标准 `Authorization` 头中携带 token：
 
 ```
-64b81a7b01b4dfb4ad3380a367cdeaf59878d9070c0d5e0cf84025e58ed3e853
+Authorization: MediaBrowser Client="QianYu", Device="Windows",
+  DeviceId="...", Version="0.9.0", Token="..."
 ```
+
+已修改：
+
+```
+src/qianyu/core/jellyfin.py
+```
+
+并新增回归测试：
+
+```
+tests/unit/test_jellyfin.py::test_authorization_includes_token
+```
+
+## 结论
+
+QianYu 的 Jellyfin 客户端已通过真实 Jellyfin 12.3：
+
+- 启动向导；
+- 管理员登录；
+- 音乐库扫描；
+- 搜索；
+- 专辑列表；
+- 专辑曲目；
+- 音频串流。
 
 ## 配置 QianYu
 
 ```
 设置 → 远程媒体库 → Jellyfin
 服务器：http://127.0.0.1:8096
-用户名：管理员用户名
-密码：管理员密码
+用户名：qianyu
+密码：qianyu-test-pass
 ```
 
-## 真实服务器验证脚本
-
-```powershell
-$env:JELLYFIN_URL = "http://127.0.0.1:8096"
-$env:JELLYFIN_USER = "qianyu"
-$env:JELLYFIN_PASSWORD = "你的密码"
-python tools\jellyfin_real_test.py
-```
-
-期望：
-
-```json
-{
-  "login": true,
-  "albums": 1,
-  "album_songs": 2,
-  "stream_bytes": 4096,
-  "ok": true
-}
-```
-
-## 应用内验证
-
-```
-在线 → 远程专辑… → Jellyfin → 加载专辑
-在线 → 统一搜索… → 搜索曲名
-```
+测试使用临时数据目录，不修改用户现有 Jellyfin 数据；服务器在测试结束后停止。
 
 ## 说明
 
-- 真实 Jellyfin 服务器尚未跑通；
-- Navidrome（Subsonic）真实联调已通过；
-- Jellyfin API 代码路径已由 mock 覆盖；
-- 下载完成后可直接运行 `jellyfin_real_test.py` 完成真实验证。
+- 真实 Jellyfin 服务器已跑通；
+- Navidrome（Subsonic）真实联调也已通过；
+- 测试音乐由 Jellyfin 自带 ffmpeg 生成，带 ID3 标签与封面；
+- 下载的 Jellyfin ZIP 保存在 `tools/jellyfin.zip`。

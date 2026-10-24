@@ -78,6 +78,21 @@ class JellyfinTests(unittest.TestCase):
         self.assertEqual(len(songs_result), 1)
         self.assertEqual(songs_result[0].duration, 60)
 
+    def test_authorization_includes_token(self):
+        seen = []
+
+        def fake_urlopen(request, timeout=0):
+            seen.append(request)
+            return _Response({"Items": []})
+
+        client = JellyfinClient("https://jf.example.com", "user", "pass",
+                                token="tok", user_id="user1")
+        with patch("qianyu.core.jellyfin.urllib.request.urlopen", side_effect=fake_urlopen):
+            client.albums()
+        auth = seen[0].get_header("Authorization")
+        self.assertIn('Client="QianYu"', auth)
+        self.assertIn('Token="tok"', auth)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
