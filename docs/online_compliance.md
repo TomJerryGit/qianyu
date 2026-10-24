@@ -14,6 +14,7 @@ QianYu 是本地优先的播放器。在线功能只使用公开 API、公开 RS
 | 在线封面 | Cover Art Archive | 封面版权归原权利方；仅用于显示/本地缓存，不再分发 |
 | 在线元数据 | MusicBrainz | 元数据按其许可使用；保留来源声明 |
 | 歌手写真 | Deezer 公共搜索 API | 仅用于当前歌手页面显示/本地缓存，不再分发；版权归原权利方 |
+| 远程媒体库 | 用户自建 Subsonic/Jellyfin | 只有用户配置后才连接；不抓取第三方服务 |
 | Scrobbling | ListenBrainz | 用户主动开启；token 本地保存；只提交播放记录 |
 
 ## 产品约束

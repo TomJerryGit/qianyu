@@ -70,7 +70,15 @@
 - 当前为独立远程搜索面板，本地/远程统一搜索在下一阶段。
 - 密码使用 Windows DPAPI 加密后保存在本机配置；API 只发送 Subsonic token。
 
-### 6. 已有在线能力
+### 6. Jellyfin 与统一搜索
+
+- Jellyfin 服务器/用户名/密码配置；
+- 登录获取 AccessToken，密码用 DPAPI 本地加密；
+- 远程 Audio 搜索与 `/Audio/{id}/stream` 串流；
+- 「在线 → 统一搜索…」同时查询本地媒体库、Subsonic/Navidrome、Jellyfin；
+- 结果按来源标记，双击播放本地或远程曲目。
+
+### 7. 已有在线能力
 
 - MusicBrainz 元数据补全；
 - LRCLIB 在线歌词；
@@ -96,12 +104,12 @@
 - 本地播放历史与在线记录去重；
 - 默认关闭，明确隐私提示。
 
-### P3 Jellyfin / 统一搜索
+### P3 远程体验增强
 
-- Jellyfin API 适配；
-- 本地与远程结果合并搜索；
-- 远程播放队列/封面；
-- 密码/ token 本地加密存储。
+- 远程专辑/艺术家浏览；
+- 远程封面；
+- 远程播放队列；
+- Jellyfin 密码/token 更多登录方式（Quick Connect）。
 
 ### P5 推荐
 

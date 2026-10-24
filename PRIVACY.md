@@ -30,6 +30,9 @@ online action:
   (current-user scope) before being written to the config file. The password is
   used to derive a short-lived Subsonic token and is not sent in clear text by
   API requests. Remote audio is streamed from that server.
+- **Jellyfin** — only when configured. The password and access token are
+  DPAPI-encrypted locally; the access token is sent to the Jellyfin server for
+  search/stream requests. No local library is uploaded.
 
 No audio files and no local library contents are uploaded by these
 requests. The services receive the query text and normal HTTP metadata

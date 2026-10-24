@@ -41,6 +41,7 @@ from .radio_dialog import RadioDialog
 from .podcast_dialog import PodcastDialog
 from .remote_dialog import RemoteDialog, make_client
 from .radio_window import RadioWindow
+from .unified_search import UnifiedSearchDialog
 from .tag_dialog import TagEditDialog
 from .theme_color import dominant_color
 from ..core.cue import parse_cue
@@ -49,6 +50,7 @@ from ..core.radio import RadioStation
 from ..core.podcast import Episode
 from ..core.podcast_cache import PodcastCache
 from ..core.subsonic import RemoteSong
+from ..core.jellyfin import JellyfinClient, JellyfinItem
 from ..core.scrobble import ListenBrainzScrobbler
 from ..core.secure_store import SecretStore
 from ..core.tagging import write_tags
@@ -100,7 +102,7 @@ class MainWindow(QMainWindow):
         self._config = config
         self._secrets = SecretStore(config)
         try:
-            self._secrets.migrate(["listenbrainz_token", "subsonic_password"])
+            self._secrets.migrate(["listenbrainz_token", "subsonic_password", "jellyfin_password", "jellyfin_token"])
         except Exception:
             pass
         base = Path(data_dir) if data_dir else Path.home() / ".qianyu_media"
@@ -436,6 +438,7 @@ class MainWindow(QMainWindow):
         file_menu.addAction(quit_action)
 
         online_menu = self.menuBar().addMenu("在线")
+        online_menu.addAction("统一搜索…", self._show_unified_search)
         online_menu.addAction("网络电台…", self._show_radio)
         online_menu.addAction("经典电台窗口", self._show_radio_window)
         online_menu.addAction("播客…", self._show_podcasts)
@@ -1621,6 +1624,53 @@ class MainWindow(QMainWindow):
             ranges=[(item.start, item.end) for item in sheet.tracks],
         )
         self._status.showMessage(f"CUE：{sheet.title} / {cue.title}")
+
+    def _show_unified_search(self) -> None:
+        dialog = UnifiedSearchDialog(self._library, self._config, self)
+        dialog.play_requested.connect(self._play_unified_result)
+        dialog.exec()
+
+    def _play_unified_result(self, result) -> None:
+        if isinstance(result, Track):
+            if not any(item.path == result.path for item in self._playlist.items):
+                self._playlist.add(result.path, result.display)
+                self._playlist.select(len(self._playlist.items) - 1)
+                self._playlist_store.save()
+                self._refresh_playlist()
+            self._start_track(result, self._playlist.current_index)
+            return
+        if isinstance(result, RemoteSong):
+            self._play_remote_song(result)
+            return
+        if isinstance(result, JellyfinItem):
+            self._play_jellyfin_item(result)
+
+    def _play_jellyfin_item(self, item: JellyfinItem) -> None:
+        client = JellyfinClient(
+            str(self._config.get("jellyfin_url", "")),
+            str(self._config.get("jellyfin_user", "")),
+            self._secrets.get("jellyfin_password"),
+            self._secrets.get("jellyfin_token"),
+            str(self._config.get("jellyfin_user_id", "")),
+        )
+        try:
+            if not client.token or not client.user_id:
+                client.login()
+                self._secrets.set("jellyfin_token", client.token)
+                self._config.set("jellyfin_user_id", client.user_id)
+            url = client.stream_url(item)
+        except Exception as exc:
+            self._status.showMessage(f"Jellyfin 播放失败：{exc}")
+            return
+        track = Track(
+            path=url,
+            title=item.title,
+            artist=item.artist,
+            album=item.album or "Jellyfin",
+            duration=item.duration,
+            cover="",
+        )
+        self._play_online_track(track, f"Jellyfin：{item.title}")
 
     def _show_radio(self) -> None:
         dialog = RadioDialog(self, self._config)

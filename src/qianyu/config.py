@@ -29,6 +29,11 @@ DEFAULTS = {
     "subsonic_url": "",
     "subsonic_user": "",
     "subsonic_password": "",
+    "jellyfin_url": "",
+    "jellyfin_user": "",
+    "jellyfin_password": "",
+    "jellyfin_token": "",
+    "jellyfin_user_id": "",
     "window": {"w": 1180, "h": 760},
 }
 
