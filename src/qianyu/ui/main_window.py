@@ -113,6 +113,7 @@ class MainWindow(QMainWindow):
             # Locked-down profiles still get a usable session instead of a
             # startup crash; the data simply lives in a temp directory.
             base = Path(tempfile.mkdtemp(prefix="qianyu-data-"))
+        self._artist_cache_dir = base / "artist_images"
         self._library = Library(base / "library.db")
         self._podcast_cache = PodcastCache(
             base / "podcast_cache",
@@ -1087,11 +1088,13 @@ class MainWindow(QMainWindow):
 
     def _show_now_page(self) -> None:
         if self._now_page is None:
-            self._now_page = NowPlayingPage(self)
+            self._now_page = NowPlayingPage(self, self._artist_cache_dir)
             self._now_page.play_pause.connect(self._toggle)
             self._now_page.previous_track.connect(self._previous)
             self._now_page.next_track.connect(self._next)
         self._update_now_page()
+        if self._now_page is not None:
+            self._now_page.set_playing(self._engine.state == EngineState.PLAYING)
         self._now_page.showFullScreen()
         self._now_page.raise_()
 
@@ -1330,6 +1333,8 @@ class MainWindow(QMainWindow):
                 self._play_btn.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
             if self._mini is not None:
                 self._mini.set_playing(playing)
+            if self._now_page is not None:
+                self._now_page.set_playing(playing)
         elif event.kind == "error":
             if self._radio_station is not None and self._radio_retries < 3:
                 self._radio_retries += 1

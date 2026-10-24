@@ -27,6 +27,7 @@ QianYu also communicates with public services at the user's request:
 | Apple iTunes Search API | podcast search results | “Powered by iTunes” attribution |
 | Podcast RSS feeds | episode metadata/audio URLs | audio belongs to publishers |
 | MusicBrainz | music metadata | attribution required |
+| Deezer Search API | artist photos | display/cache only; rights remain with owners |
 | LRCLIB | lyrics | lyrics copyright belongs to rights holders |
 | Cover Art Archive | cover art | artwork copyright belongs to rights holders |
 | ListenBrainz | optional scrobble records | user token, default off |

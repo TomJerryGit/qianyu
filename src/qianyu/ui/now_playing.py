@@ -8,9 +8,24 @@ from pathlib import Path
 
 from ..qt import (
     QGraphicsBlurEffect, QHBoxLayout, QLabel, QListWidget, QPixmap, QPushButton,
-    QSize, QVBoxLayout, QWidget, Qt, pyqtSignal,
+    QSize, QThread, QVBoxLayout, QWidget, Qt, pyqtSignal,
 )
 from ..core.models import Track
+from ..core.artist_image import fetch_artist_image
+from .spectrum import SpectrumWidget
+
+
+class ArtistImageThread(QThread):
+    loaded = pyqtSignal(str)
+
+    def __init__(self, artist: str, cache_dir, parent=None):
+        super().__init__(parent)
+        self._artist = artist
+        self._cache_dir = cache_dir
+
+    def run(self) -> None:
+        path = fetch_artist_image(self._artist, self._cache_dir, timeout=2.5)
+        self.loaded.emit(str(path) if path is not None else "")
 
 
 class NowPlayingPage(QWidget):
@@ -19,10 +34,14 @@ class NowPlayingPage(QWidget):
     next_track = pyqtSignal()
     closed = pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, cache_dir=None):
         super().__init__(parent, Qt.Window)
         self.setWindowTitle("浅语影音 · 正在播放")
         self.setAttribute(Qt.WA_DeleteOnClose, False)
+        self._cache_dir = cache_dir
+        self._artist_thread: ArtistImageThread | None = None
+        self._artist_token = 0
+        self._track: Track | None = None
         self._background = QLabel(self)
         self._background.setScaledContents(True)
         self._blur = QGraphicsBlurEffect(self._background)
@@ -40,7 +59,14 @@ class NowPlayingPage(QWidget):
         self._cover.setFixedSize(380, 380)
         self._cover.setAlignment(Qt.AlignCenter)
         self._cover.setText("♪")
-        body.addWidget(self._cover, 0, Qt.AlignVCenter)
+        left = QVBoxLayout()
+        left.setSpacing(8)
+        left.addWidget(self._cover, 0, Qt.AlignVCenter)
+        self._spectrum = SpectrumWidget()
+        self._spectrum.setObjectName("nowPageSpectrum")
+        left.addWidget(self._spectrum)
+        left.addStretch(1)
+        body.addLayout(left)
 
         right = QVBoxLayout()
         right.setSpacing(8)
@@ -73,6 +99,7 @@ class NowPlayingPage(QWidget):
         layout.addLayout(body, 1)
 
     def set_track(self, track: Track) -> None:
+        self._track = track
         self._title.setText(track.title or Path(track.path).stem)
         meta = " · ".join(part for part in (track.artist, track.album) if part)
         self._meta.setText(meta or Path(track.path).parent.name)
@@ -81,7 +108,12 @@ class NowPlayingPage(QWidget):
             self._cover.setPixmap(QPixmap())
             self._cover.setText("♪")
             self._background.setPixmap(QPixmap())
+            self._load_artist_image(track)
             return
+        self._apply_cover(pixmap)
+
+    def _apply_cover(self, pixmap: QPixmap) -> None:
+        self._cover.setText("")
         self._background.setPixmap(pixmap.scaled(
             self.size(), Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
         ))
@@ -89,10 +121,43 @@ class NowPlayingPage(QWidget):
             QSize(380, 380), Qt.KeepAspectRatio, Qt.SmoothTransformation
         ))
 
+    def _load_artist_image(self, track: Track) -> None:
+        folder = Path(track.path).parent
+        for name in ("artist.jpg", "artist.png", "folder.jpg", "folder.png"):
+            local = folder / name
+            if local.is_file():
+                pixmap = QPixmap(str(local))
+                if not pixmap.isNull():
+                    self._apply_cover(pixmap)
+                    return
+        if not self._cache_dir or not str(track.artist or "").strip():
+            return
+        if self._artist_thread is not None and self._artist_thread.isRunning():
+            self._artist_thread.requestInterruption()
+            self._artist_thread.wait(3000)
+        self._artist_token += 1
+        token = self._artist_token
+        thread = ArtistImageThread(str(track.artist), self._cache_dir, self)
+        thread.loaded.connect(lambda path: self._on_artist_image(token, path))
+        self._artist_thread = thread
+        thread.start()
+
+    def _on_artist_image(self, token: int, path: str) -> None:
+        if token != self._artist_token or not path or self._track is None:
+            return
+        if self._track.cover:
+            return
+        pixmap = QPixmap(path)
+        if not pixmap.isNull():
+            self._apply_cover(pixmap)
+
     def set_lyrics(self, lines) -> None:
         self._lyrics.clear()
         for text in lines:
             self._lyrics.addItem(text)
+
+    def set_playing(self, playing: bool) -> None:
+        self._spectrum.set_playing(playing)
 
     def set_position(self, index: int) -> None:
         if 0 <= index < self._lyrics.count():
@@ -112,5 +177,8 @@ class NowPlayingPage(QWidget):
             super().keyPressEvent(event)
 
     def closeEvent(self, event) -> None:
+        if self._artist_thread is not None and self._artist_thread.isRunning():
+            self._artist_thread.requestInterruption()
+            self._artist_thread.wait(6000)
         self.closed.emit()
         super().closeEvent(event)

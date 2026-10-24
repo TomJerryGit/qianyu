@@ -33,6 +33,7 @@ class SettingsDialog(QDialog):
         self._theme = QComboBox()
         self._theme.addItem("深色", "dark")
         self._theme.addItem("浅色", "light")
+        self._theme.addItem("经典金属", "classic")
         index = self._theme.findData(str(self._config.get("theme", "dark")))
         self._theme.setCurrentIndex(max(0, index))
         layout.addWidget(self._theme)

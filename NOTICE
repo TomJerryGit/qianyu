@@ -14,6 +14,7 @@ Jellyfin, Navidrome, Spotify, NetEase, QQ Music, or any radio/podcast station.
 - Podcast search data: Apple iTunes Search API; podcast audio is supplied by
   the publisher's RSS feed.
 - Music metadata: MusicBrainz.
+- Artist photos: Deezer public search API, displayed/cached locally only.
 - Lyrics: LRCLIB and user-provided local lyrics.
 - Cover art: Cover Art Archive, embedded tags, or user-provided files.
 - Scrobbling: ListenBrainz, only when the user enables it.
