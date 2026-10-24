@@ -49,10 +49,16 @@ https://sgp1.mirror.jellyfin.org/files/server/windows/stable/v12.3/amd64/jellyfi
 
 ## 下载
 
-后台下载/续传脚本：
+后台下载/续传脚本（单连接）：
 
 ```powershell
 python tools\download_jellyfin.py
+```
+
+并行分片下载（推荐，支持断点续传）：
+
+```powershell
+python tools\download_jellyfin_parallel.py
 ```
 
 当前镜像约 20–30 KB/s；完成后校验 SHA-256：

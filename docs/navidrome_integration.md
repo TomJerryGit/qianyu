@@ -91,8 +91,8 @@ python tools\navidrome_integration.py
 
 ```
 workflow: navidrome-integration
-commit:   6668e03
-run:      40104142606
+commit:   9ce619a
+run:      40104469671
 result:   success
 ```
 
