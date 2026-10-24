@@ -36,7 +36,9 @@ python tools\navidrome_integration.py
   "albums": 1,
   "album_tracks": 2,
   "stream": true,
-  "stream_bytes": 4096
+  "stream_bytes": 4096,
+  "cover": true,
+  "cover_bytes": 511
 }
 ```
 
@@ -62,8 +64,8 @@ QianYu 的 Subsonic 客户端已通过真实 Navidrome 的：
 - ping；
 - 搜索；
 - 专辑列表；
-- 专辑曲目；
-- 音频串流。
+- 音频串流读取；
+- 封面 `getCoverArt` 读取（511 字节 JPEG）。
 
 这不是 mock 测试，而是真实 Navidrome 进程。
 

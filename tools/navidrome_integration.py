@@ -6,6 +6,7 @@ the same SubsonicClient used by QianYu (ping/search/albums/stream).
 """
 from __future__ import annotations
 
+import base64
 import json
 import math
 import shutil
@@ -21,6 +22,19 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from qianyu.core.subsonic import SubsonicClient
 
+COVER_JPEG = base64.b64decode(
+    "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////"
+    "////////////////////////////////////////////////////////2wBDAf//////////"
+    "////////////////////////////////////////////////////////////wAARCAABAAED"
+    "ASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAA"
+    "AAAA/9oADAMBAAIQAxAAAAF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABBQJ//8QA"
+    "FBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAwEBPwF//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/a"
+    "AAgBAgEBPwF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQAGPwJ//8QAFBABAAAA"
+    "AAAAAAAAAAAAAAAAAP/aAAgBAQABPyF//9oADAMBAAIAAwAAABD/xAAUEQEAAAAAAAAA"
+    "AAAAAAAAAAAA/9oACAEDAQE/EB//xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAECAQE/"
+    "EB//xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAE/EB//2Q=="
+)
+
 EXE = ROOT / "tools" / "navidrome" / "navidrome.exe"
 MUSIC = ROOT / "tools" / "navidrome-music"
 DATA = ROOT / "tools" / "navidrome-test-data"
@@ -34,6 +48,9 @@ OUT = ROOT / "tools" / "navidrome_integration.json"
 
 def ensure_music() -> None:
     MUSIC.mkdir(parents=True, exist_ok=True)
+    cover = MUSIC / "cover.jpg"
+    if not cover.exists():
+        cover.write_bytes(COVER_JPEG)
     if any(MUSIC.glob("*.wav")):
         return
     for index, (frequency, name) in enumerate(((440, "single_tone.wav"),
@@ -130,6 +147,8 @@ def main() -> int:
             say(f"ALBUM_SONGS {len(album_tracks)}")
         stream_ok = False
         stream_bytes = 0
+        cover_ok = False
+        cover_bytes = 0
         if songs:
             stream = client.stream_url(songs[0])
             try:
@@ -139,6 +158,15 @@ def main() -> int:
                     stream_bytes = len(chunk)
             except Exception as exc:
                 say(f"STREAM_ERROR {type(exc).__name__}: {exc}")
+            cover_url = client.cover_url(songs[0])
+            if cover_url:
+                try:
+                    with urllib.request.urlopen(cover_url, timeout=15) as response:
+                        cover = response.read(4096)
+                        cover_ok = response.status == 200 and bool(cover)
+                        cover_bytes = len(cover)
+                except Exception as exc:
+                    say(f"COVER_ERROR {type(exc).__name__}: {exc}")
         result = {
             "ready": True,
             "ping": True,
@@ -147,6 +175,8 @@ def main() -> int:
             "album_tracks": len(album_tracks),
             "stream": stream_ok,
             "stream_bytes": stream_bytes,
+            "cover": cover_ok,
+            "cover_bytes": cover_bytes,
         }
         OUT.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
         say("RESULT " + json.dumps(result, ensure_ascii=False))
