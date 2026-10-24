@@ -33,6 +33,7 @@ class SpectrumAnalyzerThread(QThread):
 
 class WasapiSpectrumThread(QThread):
     levels = pyqtSignal(list)
+    captured = pyqtSignal()
 
     def run(self) -> None:
         loop = WasapiLoopback()
@@ -43,6 +44,7 @@ class WasapiSpectrumThread(QThread):
                 if pcm:
                     frames = analyze_pcm(pcm)
                     if frames:
+                        self.captured.emit()
                         self.levels.emit(list(frames[-1][1]))
                 self.msleep(80)
         except Exception:
@@ -282,8 +284,9 @@ class NowPlayingPage(QWidget):
         if os.environ.get("QT_QPA_PLATFORM") == "offscreen":
             self._spectrum_source.setText("频谱：装饰（无音频输出）")
             return
-        self._spectrum_source.setText("频谱：实时 · WASAPI")
+        self._spectrum_source.setText("频谱：WASAPI（等待音频）")
         thread = WasapiSpectrumThread(self)
+        thread.captured.connect(lambda: self._spectrum_source.setText("频谱：实时 · WASAPI"))
         thread.levels.connect(self._spectrum.set_live_levels)
         self._loopback_thread = thread
         thread.start()
