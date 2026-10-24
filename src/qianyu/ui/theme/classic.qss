@@ -239,3 +239,53 @@ QListWidget#nowPageLyrics::item:selected {
     background: rgba(59, 110, 245, 150);
     color: #ffffff;
 }
+
+/* Classic remote-control style for the video transport bar */
+#videoControls {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #3b2f23, stop:1 #211a13);
+    border-top: 1px solid #6e5235;
+}
+#videoControls QLabel {
+    color: #eadcc0;
+    font-family: "Consolas", monospace;
+}
+#videoControls QPushButton {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #5a432d, stop:1 #3a2b1e);
+    border: 1px solid #85633f;
+    border-radius: 10px;
+    color: #f4dfb8;
+    padding: 5px 11px;
+    min-height: 22px;
+}
+#videoControls QPushButton:hover {
+    background: #6d5135;
+    border-color: #c59a63;
+}
+#videoControls QPushButton:pressed {
+    background: #2a1f15;
+}
+#videoControls QPushButton:checked {
+    background: #8a6334;
+    color: #fff2d2;
+}
+#videoControls QComboBox {
+    background: #2c2218;
+    border: 1px solid #6e5235;
+    border-radius: 8px;
+    color: #eadcc0;
+    padding: 4px 8px;
+}
+#videoControls QSlider::groove:horizontal {
+    height: 5px;
+    background: #1b1510;
+    border-radius: 2px;
+}
+#videoControls QSlider::handle:horizontal {
+    background: #d7a24b;
+    border: 1px solid #f0cc87;
+    width: 16px;
+    margin: -6px 0;
+    border-radius: 8px;
+}

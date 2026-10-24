@@ -6,6 +6,7 @@
 
 ![经典电台模式](docs/images/radio_window.png)
 ![经典音乐模式](docs/images/classic_music.png)
+![视频遥控器风格](docs/images/video_remote_skin.png)
 
 三种使用形态：
 
