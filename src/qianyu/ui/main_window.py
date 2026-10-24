@@ -99,6 +99,18 @@ class ScanThread(QThread):
             self.failed.emit(f"{type(exc).__name__}: {exc}")
 
 
+class PinyinBackfillThread(QThread):
+    def __init__(self, library: Library, parent=None):
+        super().__init__(parent)
+        self._library = library
+
+    def run(self) -> None:
+        try:
+            self._library.backfill_pinyin()
+        except Exception:
+            pass
+
+
 class MainWindow(QMainWindow):
     def __init__(self, config: Config, engine: MpvEngine | None = None, data_dir: str | Path | None = None):
         super().__init__()
@@ -194,6 +206,8 @@ class MainWindow(QMainWindow):
         width = int(config.get("window", {}).get("w", 1180))
         height = int(config.get("window", {}).get("h", 760))
         self.resize(width, height)
+        self._pinyin_thread = PinyinBackfillThread(self._library, self)
+        self._pinyin_thread.start()
 
     # ------------------------------------------------------------------
     # UI
@@ -1981,6 +1995,8 @@ class MainWindow(QMainWindow):
             self._playlist_store.save()
         finally:
             self._timer.stop()
+            if getattr(self, "_pinyin_thread", None) is not None:
+                self._pinyin_thread.wait(5000)
             self._engine.shutdown()
             if self._media_keys is not None:
                 self._media_keys.unregister()

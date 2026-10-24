@@ -82,6 +82,17 @@ class LibraryTests(unittest.TestCase):
         self.assertGreater(search_score("稻香", favorite),
                            search_score("稻香", basic))
 
+    def test_pinyin_database_search(self):
+        from contextlib import closing
+        track = Track(path=str(self.music / "pinyin.wav"), title="稻香",
+                      artist="周杰伦", album="魔杰座")
+        with closing(self.library._connect()) as conn:
+            Library._upsert(conn, track, 1.0)
+            conn.commit()
+        self.assertEqual(len(self.library.search("zjl")), 1)
+        self.assertEqual(len(self.library.search("zhoujielun")), 1)
+        self.assertEqual(len(self.library.search("daoxiang")), 1)
+
     def test_remove_missing(self):
         self.library.scan(self.music)
         (self.music / "gapless_a.wav").unlink()

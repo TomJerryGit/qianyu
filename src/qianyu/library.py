@@ -111,11 +111,13 @@ CREATE TABLE IF NOT EXISTS tracks (
     end REAL DEFAULT 0,
     favorite INTEGER DEFAULT 0,
     play_count INTEGER DEFAULT 0,
-    last_played REAL DEFAULT 0
+    last_played REAL DEFAULT 0,
+    pinyin TEXT DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_tracks_artist ON tracks(artist);
 CREATE INDEX IF NOT EXISTS idx_tracks_album ON tracks(album);
 CREATE INDEX IF NOT EXISTS idx_tracks_title ON tracks(title COLLATE NOCASE);
+CREATE INDEX IF NOT EXISTS idx_tracks_pinyin ON tracks(pinyin);
 CREATE INDEX IF NOT EXISTS idx_tracks_sort ON tracks(
     artist COLLATE NOCASE, album COLLATE NOCASE, disc_no, track_no, title
 );
@@ -163,6 +165,9 @@ class Library:
                 conn.execute("ALTER TABLE tracks ADD COLUMN play_count INTEGER DEFAULT 0")
             if "last_played" not in columns:
                 conn.execute("ALTER TABLE tracks ADD COLUMN last_played REAL DEFAULT 0")
+            if "pinyin" not in columns:
+                conn.execute("ALTER TABLE tracks ADD COLUMN pinyin TEXT DEFAULT ''")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_tracks_pinyin ON tracks(pinyin)")
             self._fts_ready = self._init_fts(conn)
             conn.commit()
 
@@ -459,23 +464,28 @@ class Library:
     def _upsert(conn: sqlite3.Connection, track: Track, mtime: float) -> None:
         import time
 
+        full, initials = pinyin_variants(
+            " ".join(part for part in (track.title, track.artist, track.album) if part)
+        )
+        pinyin = f"{full} {initials}".strip()
         conn.execute(
             """INSERT INTO tracks(path,title,artist,album,duration,track_no,disc_no,
                                   codec,sample_rate,channels,bitrate,mtime,added_at,cover,
-                                  cue_path,start,end)
-               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                                  cue_path,start,end,pinyin)
+               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                ON CONFLICT(path) DO UPDATE SET
                  title=excluded.title, artist=excluded.artist, album=excluded.album,
                  duration=excluded.duration, track_no=excluded.track_no,
                  disc_no=excluded.disc_no, codec=excluded.codec,
                  sample_rate=excluded.sample_rate, channels=excluded.channels,
                  bitrate=excluded.bitrate, mtime=excluded.mtime, cover=excluded.cover,
-                 cue_path=excluded.cue_path, start=excluded.start, end=excluded.end""",
+                 cue_path=excluded.cue_path, start=excluded.start, end=excluded.end,
+                 pinyin=excluded.pinyin""",
             (
                 track.path, track.title, track.artist, track.album, track.duration,
                 track.track_no, track.disc_no, track.codec, track.sample_rate,
                 track.channels, track.bitrate, mtime, time.time(), track.cover,
-                track.cue_path, track.start, track.end,
+                track.cue_path, track.start, track.end, pinyin,
             ),
         )
 
@@ -513,8 +523,19 @@ class Library:
                 tracks.sort(key=lambda item: (-search_score(keyword, item),
                                               item.title.casefold()))
                 return tracks[:200]
-        # Pinyin: zjl / zhoujielun / dx for Chinese titles and artists.
+        # Pinyin index: zjl / zhoujielun / dx for Chinese titles and artists.
         compact = re.sub(r"\s+", "", keyword.casefold())
+        if compact.isascii() and len(compact) >= 2:
+            with closing(self._connect()) as conn:
+                rows = conn.execute(
+                    "SELECT * FROM tracks WHERE pinyin LIKE ? LIMIT 500",
+                    (f"%{compact}%",),
+                ).fetchall()
+            if rows:
+                tracks = [self._row_to_track(row) for row in rows]
+                tracks.sort(key=lambda item: (-search_score(keyword, item),
+                                              item.title.casefold()))
+                return tracks[:200]
         if compact.isascii() and len(compact) >= 2 and lazy_pinyin is not None:
             scored = []
             for track in self.tracks():
@@ -550,6 +571,28 @@ class Library:
         self._pinyin_cache[key] = result
         return result
 
+    def backfill_pinyin(self, batch_size: int = 200) -> int:
+        """Fill the pinyin column for tracks imported by older versions."""
+        updated = 0
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                "SELECT path, title, artist, album FROM tracks "
+                "WHERE pinyin IS NULL OR pinyin=''"
+            ).fetchall()
+            for row in rows:
+                full, initials = pinyin_variants(
+                    " ".join(part for part in (row["title"], row["artist"], row["album"]) if part)
+                )
+                conn.execute(
+                    "UPDATE tracks SET pinyin=? WHERE path=?",
+                    (f"{full} {initials}".strip(), row["path"]),
+                )
+                updated += 1
+                if updated % batch_size == 0:
+                    conn.commit()
+            conn.commit()
+        return updated
+
     def get(self, path: str) -> Optional[Track]:
         with closing(self._connect()) as conn:
             row = conn.execute("SELECT * FROM tracks WHERE path=?", (path,)).fetchone()
@@ -569,6 +612,17 @@ class Library:
         values.append(path)
         with closing(self._connect()) as conn:
             conn.execute(f"UPDATE tracks SET {', '.join(sets)} WHERE path=?", values)
+            row = conn.execute(
+                "SELECT title, artist, album FROM tracks WHERE path=?", (path,)
+            ).fetchone()
+            if row is not None:
+                full, initials = pinyin_variants(
+                    " ".join(part for part in (row["title"], row["artist"], row["album"]) if part)
+                )
+                conn.execute(
+                    "UPDATE tracks SET pinyin=? WHERE path=?",
+                    (f"{full} {initials}".strip(), path),
+                )
             conn.commit()
 
     def set_favorite(self, path: str, favorite: bool) -> None:
