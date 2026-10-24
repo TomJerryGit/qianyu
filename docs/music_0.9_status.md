@@ -166,6 +166,8 @@
 
 **Round 51 新增**：远程媒体库“测试连接”按钮，便于本地 Navidrome/Subsonic 联调。
 
+**Round 52 新增**：真实 Navidrome 0.64.2 联调通过（ping/搜索/专辑/串流），见 `docs/navidrome_integration.md`。
+
 **Round 31 新增**：Radio Browser 网络电台搜索/播放、网络流地址播放；单测增至 35。
 
 **实测数据（`spike/ui_smoke.py`）**：
