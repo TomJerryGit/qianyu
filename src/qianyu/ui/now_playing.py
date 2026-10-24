@@ -4,6 +4,7 @@
 """Full-screen now-playing page with large cover, lyrics and blurred backdrop."""
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from ..qt import (
@@ -121,6 +122,9 @@ class NowPlayingPage(QWidget):
         self._spectrum = SpectrumWidget()
         self._spectrum.setObjectName("nowPageSpectrum")
         left.addWidget(self._spectrum)
+        self._spectrum_source = QLabel("频谱：装饰")
+        self._spectrum_source.setObjectName("stats")
+        left.addWidget(self._spectrum_source)
         left.addStretch(1)
         body.addLayout(left)
 
@@ -275,6 +279,10 @@ class NowPlayingPage(QWidget):
 
     def _start_loopback(self) -> None:
         self._stop_loopback()
+        if os.environ.get("QT_QPA_PLATFORM") == "offscreen":
+            self._spectrum_source.setText("频谱：装饰（无音频输出）")
+            return
+        self._spectrum_source.setText("频谱：实时 · WASAPI")
         thread = WasapiSpectrumThread(self)
         thread.levels.connect(self._spectrum.set_live_levels)
         self._loopback_thread = thread
@@ -291,6 +299,9 @@ class NowPlayingPage(QWidget):
             return
         if frames:
             self._spectrum.set_frames(frames)
+            self._spectrum_source.setText("频谱：真实 · FFmpeg")
+        else:
+            self._spectrum_source.setText("频谱：装饰（分析失败）")
 
     def set_position(self, index: int) -> None:
         if 0 <= index < self._lyrics.count():
