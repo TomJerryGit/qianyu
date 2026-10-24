@@ -36,11 +36,13 @@ from .duplicate_dialog import DuplicateDialog
 from .eq_dialog import EqualizerDialog
 from .lyrics_editor import LyricsEditorDialog
 from .mini_player import MiniPlayer
+from .highlight import HighlightDelegate
 from .now_playing import NowPlayingPage
 from .radio_dialog import RadioDialog
 from .podcast_dialog import PodcastDialog
 from .remote_dialog import RemoteDialog, make_client
 from .radio_window import RadioWindow
+from .radio_onboarding import RadioInterestDialog
 from .remote_album_dialog import RemoteAlbumDialog
 from .unified_search import UnifiedSearchDialog
 from .tag_dialog import TagEditDialog
@@ -208,6 +210,9 @@ class MainWindow(QMainWindow):
         self.resize(width, height)
         self._pinyin_thread = PinyinBackfillThread(self._library, self)
         self._pinyin_thread.start()
+        if not os.environ.get("QT_QPA_PLATFORM") == "offscreen":
+            if not bool(self._config.get("radio_onboarding_done", False)):
+                QTimer.singleShot(1200, self._maybe_radio_onboarding)
 
     # ------------------------------------------------------------------
     # UI
@@ -287,6 +292,9 @@ class MainWindow(QMainWindow):
         self._table = QTableView()
         self._track_model = TrackTableModel(parent=self._table)
         self._table.setModel(self._track_model)
+        self._highlight_delegate = HighlightDelegate(self._table)
+        for column in (0, 1, 2):
+            self._table.setItemDelegateForColumn(column, self._highlight_delegate)
         self._table.verticalHeader().setVisible(False)
         self._table.verticalHeader().setDefaultSectionSize(30)
         self._table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -609,6 +617,8 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
     def _refresh_library(self, force: bool = False) -> None:
         keyword = self._search.text() if hasattr(self, "_search") else ""
+        if hasattr(self, "_highlight_delegate"):
+            self._highlight_delegate.set_query(keyword)
         try:
             tracks = self._library.search(keyword)
         except Exception as exc:
@@ -1719,6 +1729,33 @@ class MainWindow(QMainWindow):
             cover=client.cover_url(item),
         )
         self._play_online_track(track, f"Jellyfin：{item.title}")
+
+    def _maybe_radio_onboarding(self) -> None:
+        if bool(self._config.get("radio_onboarding_done", False)):
+            return
+        dialog = RadioInterestDialog(self)
+        accepted = dialog.exec() == DIALOG_ACCEPTED
+        tags = dialog.selected_tags() if accepted else []
+        self._config.set("radio_interests", tags)
+        if accepted and tags:
+            existing = []
+            seen = set()
+            for item in self._config.get("radio_favorites", []) or []:
+                station = RadioStation.from_dict(item)
+                if station is not None and station.url not in seen:
+                    existing.append(station)
+                    seen.add(station.url)
+            for station in preset_stations():
+                matched = any(tag.casefold() in station.tags.casefold() for tag in tags)
+                if matched and station.url not in seen:
+                    existing.append(station)
+                    seen.add(station.url)
+            self._config.set(
+                "radio_favorites",
+                [station.as_dict() for station in existing[:12]],
+            )
+            self._status.showMessage(f"已生成 {min(12, len(existing))} 个精选电台收藏")
+        self._config.set("radio_onboarding_done", True)
 
     def _show_radio(self) -> None:
         dialog = RadioDialog(self, self._config)

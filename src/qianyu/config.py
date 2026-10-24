@@ -34,6 +34,8 @@ DEFAULTS = {
     "jellyfin_password": "",
     "jellyfin_token": "",
     "jellyfin_user_id": "",
+    "radio_onboarding_done": False,
+    "radio_interests": [],
     "window": {"w": 1180, "h": 760},
 }
 
