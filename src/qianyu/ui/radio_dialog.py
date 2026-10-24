@@ -20,14 +20,15 @@ class RadioSearchThread(QThread):
     stations = pyqtSignal(list)
     failed = pyqtSignal(str)
 
-    def __init__(self, keyword: str, country: str, parent=None):
+    def __init__(self, keyword: str, country: str, parent=None, tag: str = ""):
         super().__init__(parent)
         self._keyword = keyword
         self._country = country
+        self._tag = tag
 
     def run(self) -> None:
         try:
-            self.stations.emit(search_stations(self._keyword, self._country))
+            self.stations.emit(search_stations(self._keyword, self._country, tag=self._tag))
         except Exception as exc:
             self.failed.emit(f"{type(exc).__name__}: {exc}")
 
@@ -53,9 +54,18 @@ class RadioDialog(QDialog):
         for code, label in (("CN", "中国"), ("US", "美国"), ("GB", "英国"),
                             ("JP", "日本"), ("DE", "德国"), ("FR", "法国")):
             self._country.addItem(label, code)
+        self._category = QComboBox()
+        self._category.addItem("全部分类", "")
+        for tag, label in (("jazz", "爵士"), ("classical", "古典"),
+                           ("electronic", "电子"), ("ambient", "氛围"),
+                           ("news", "新闻"), ("indie", "独立"),
+                           ("rock", "摇滚")):
+            self._category.addItem(label, tag)
+        self._category.currentIndexChanged.connect(lambda _index: self._show_presets())
         self._button = QPushButton("搜索")
         self._button.clicked.connect(self._start_search)
         top.addWidget(self._search, 1)
+        top.addWidget(self._category)
         top.addWidget(self._country)
         top.addWidget(self._button)
         layout.addLayout(top)
@@ -109,14 +119,16 @@ class RadioDialog(QDialog):
 
     def _start_search(self) -> None:
         keyword = self._search.text().strip()
-        if not keyword:
-            self._status.setText("请输入电台名称。")
+        tag = str(self._category.currentData() or "")
+        country = str(self._country.currentData() or "")
+        if not keyword and not tag and not country:
+            self._status.setText("请输入电台名称，或选择分类/国家浏览。")
             return
         if self._thread is not None and self._thread.isRunning():
             return
-        self._status.setText(f"正在搜索：{keyword} …")
+        self._status.setText(f"正在查询：{keyword or '分类/国家目录'} …")
         self._button.setEnabled(False)
-        self._thread = RadioSearchThread(keyword, str(self._country.currentData() or ""), self)
+        self._thread = RadioSearchThread(keyword, country, self, tag)
         self._thread.stations.connect(self._show_stations)
         self._thread.failed.connect(self._show_error)
         self._thread.finished.connect(lambda: self._button.setEnabled(True))
@@ -128,7 +140,11 @@ class RadioDialog(QDialog):
         self._status.setText(f"找到 {len(self._stations)} 个电台。" if self._stations else "没有找到电台。")
 
     def _show_presets(self) -> None:
-        self._stations = preset_stations()
+        tag = str(self._category.currentData() or "").casefold()
+        stations = preset_stations()
+        if tag:
+            stations = [station for station in stations if tag in station.tags.casefold()]
+        self._stations = stations
         self._render_stations()
         self._status.setText(
             f"精选公开电台：{len(self._stations)} 个。版权归各电台，仅供在线收听。"

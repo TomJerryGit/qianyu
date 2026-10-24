@@ -105,20 +105,24 @@ def parse_stations(payload: Iterable[dict]) -> list[RadioStation]:
 
 
 def search_stations(keyword: str, country: str = "", limit: int = 50,
-                    timeout: float = 8.0) -> list[RadioStation]:
+                    timeout: float = 8.0, tag: str = "") -> list[RadioStation]:
     keyword = keyword.strip()
-    if not keyword:
+    tag = tag.strip()
+    if not keyword and not tag:
         return []
-    key = (keyword.casefold(), country.strip().casefold(), int(limit))
+    key = (keyword.casefold(), country.strip().casefold(), int(limit), tag.casefold())
     if key in _CACHE:
         return list(_CACHE[key])
     params = {
-        "name": keyword,
         "limit": str(max(1, min(int(limit), 100))),
         "hidebroken": "true",
         "order": "clickcount",
         "reverse": "true",
     }
+    if keyword:
+        params["name"] = keyword
+    if tag:
+        params["tag"] = tag
     if country.strip():
         params["countrycode"] = country.strip().upper()
     query = urllib.parse.urlencode(params)
