@@ -49,6 +49,7 @@ from ..core.cue import parse_cue
 from ..core.metadata import fetch_cover, lookup_recording
 from ..core.radio import RadioStation
 from ..core.radio_presets import preset_stations
+from ..core.platform_links import platform_names, search_url
 from ..core.podcast import Episode
 from ..core.podcast_cache import PodcastCache
 from ..core.subsonic import RemoteSong
@@ -443,6 +444,7 @@ class MainWindow(QMainWindow):
 
         online_menu = self.menuBar().addMenu("在线")
         online_menu.addAction("统一搜索…", self._show_unified_search)
+        online_menu.addAction("在平台搜索…", self._search_on_platform)
         online_menu.addAction("网络电台…", self._show_radio)
         online_menu.addAction("经典电台窗口", self._show_radio_window)
         online_menu.addAction("播客…", self._show_podcasts)
@@ -1643,6 +1645,24 @@ class MainWindow(QMainWindow):
         dialog = UnifiedSearchDialog(self._library, self._config, self)
         dialog.play_requested.connect(self._play_unified_result)
         dialog.exec()
+
+    def _search_on_platform(self) -> None:
+        query = self._search.text().strip()
+        platform, ok = QInputDialog.getItem(
+            self, "在平台搜索", "选择平台（将打开浏览器，播放由官方平台负责）：",
+            platform_names(), 0, False,
+        )
+        if not ok:
+            return
+        if not query:
+            query, ok = QInputDialog.getText(self, "在平台搜索", "搜索关键词：")
+            if not ok or not query.strip():
+                return
+        try:
+            QDesktopServices.openUrl(QUrl(search_url(platform, query)))
+            self._status.showMessage(f"已在浏览器打开：{platform} · {query}")
+        except Exception as exc:
+            self._status.showMessage(f"打开平台失败：{exc}")
 
     def _play_unified_result(self, result) -> None:
         if isinstance(result, Track):

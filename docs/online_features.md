@@ -86,7 +86,14 @@
 - 远程封面下载到本机缓存，全屏页显示；
 - 远程凭据 DPAPI 加密。
 
-### 7. 已有在线能力
+### 8. 统一搜索与平台深链
+
+- 「在线 → 统一搜索…」查询本地、Subsonic/Navidrome、Jellyfin；
+- 本地搜索支持多关键词、子串、拼写容错（编辑距离）；
+- 「在线 → 在平台搜索…」用官方搜索页打开 Spotify/Apple Music/YouTube Music/网易云/QQ 音乐/Bandcamp/Internet Archive/Jamendo/Deezer；
+- 只打开官方页面，不抓取、不代理、不绕过 DRM。
+
+### 9. 已有在线能力
 
 - MusicBrainz 元数据补全；
 - LRCLIB 在线歌词；

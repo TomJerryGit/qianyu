@@ -9,6 +9,7 @@ thread.
 """
 from __future__ import annotations
 
+import difflib
 import hashlib
 import os
 import re
@@ -20,6 +21,26 @@ from pathlib import Path
 from typing import Callable, Iterable, Optional
 
 from .core.models import Track
+
+def fuzzy_score(query: str, track: Track) -> float:
+    """Typo-tolerant score for a track's title/artist/album."""
+    needle = re.sub(r"\s+", "", str(query).casefold())
+    if not needle:
+        return 0.0
+    haystacks = [
+        re.sub(r"\s+", "", str(value or "").casefold())
+        for value in (track.title, track.artist, track.album)
+    ]
+    best = 0.0
+    for haystack in haystacks:
+        if not haystack:
+            continue
+        if needle in haystack:
+            best = max(best, 1.0)
+            continue
+        matcher = difflib.SequenceMatcher(None, needle, haystack)
+        best = max(best, matcher.ratio())
+    return best
 
 AUDIO_EXTENSIONS = {
     ".mp3", ".flac", ".wav", ".m4a", ".aac", ".ogg", ".oga", ".opus",
@@ -443,32 +464,35 @@ class Library:
         keyword = keyword.strip()
         if not keyword:
             return self.tracks()
-        if getattr(self, "_fts_ready", False) and len(keyword) >= 3:
-            tokens = re.findall(r"[\w\u4e00-\u9fff]+", keyword, re.UNICODE)
-            if tokens:
-                query = " ".join(f'"{token}"' for token in tokens)
-                try:
-                    with closing(self._connect()) as conn:
-                        rows = conn.execute(
-                            """SELECT t.* FROM tracks t
-                               JOIN tracks_fts f ON f.rowid = t.rowid
-                               WHERE tracks_fts MATCH ?
-                               ORDER BY t.artist COLLATE NOCASE, t.album COLLATE NOCASE,
-                                        t.track_no, t.title""",
-                            (query,),
-                        ).fetchall()
-                    return [self._row_to_track(row) for row in rows]
-                except sqlite3.DatabaseError:
-                    pass
-        like = f"%{keyword}%"
-        with closing(self._connect()) as conn:
-            rows = conn.execute(
-                """SELECT * FROM tracks
-                   WHERE title LIKE ? OR artist LIKE ? OR album LIKE ? OR path LIKE ?
-                   ORDER BY artist COLLATE NOCASE, album COLLATE NOCASE, track_no, title""",
-                (like, like, like, like),
-            ).fetchall()
-        return [self._row_to_track(row) for row in rows]
+        tokens = re.findall(r"[\w\u4e00-\u9fff]+", keyword, re.UNICODE)
+        if tokens:
+            clauses = []
+            values = []
+            for token in tokens:
+                like = f"%{token}%"
+                clauses.append("(title LIKE ? OR artist LIKE ? OR album LIKE ? OR path LIKE ?)")
+                values.extend([like, like, like, like])
+            with closing(self._connect()) as conn:
+                rows = conn.execute(
+                    f"""SELECT * FROM tracks
+                        WHERE {' AND '.join(clauses)}
+                        ORDER BY artist COLLATE NOCASE, album COLLATE NOCASE,
+                                 track_no, title
+                        LIMIT 500""",
+                    values,
+                ).fetchall()
+            if rows:
+                return [self._row_to_track(row) for row in rows]
+        # No substring hit: typo-tolerant search over the current library.
+        if len(keyword) >= 2:
+            scored = []
+            for track in self.tracks():
+                score = fuzzy_score(keyword, track)
+                if score >= 0.52:
+                    scored.append((score, track))
+            scored.sort(key=lambda item: (-item[0], item[1].title.casefold()))
+            return [track for _score, track in scored[:200]]
+        return []
 
     def get(self, path: str) -> Optional[Track]:
         with closing(self._connect()) as conn:
