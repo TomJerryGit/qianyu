@@ -65,6 +65,7 @@
 - 设置中配置服务器地址、用户名、密码；
 - 使用 Subsonic API token（md5(password+salt)）认证，不发送明文密码；
 - 远程搜索歌曲并串流播放；
+- 远程媒体库窗口提供“测试连接”按钮（Subsonic ping）；
 - 兼容 Navidrome、Airsonic、Gonic 等 Subsonic 服务器；
 - Jellyfin 使用独立 API，后续单独适配；
 - 当前为独立远程搜索面板，本地/远程统一搜索在下一阶段。

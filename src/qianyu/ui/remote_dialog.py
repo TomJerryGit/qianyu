@@ -38,6 +38,22 @@ class RemoteSearchThread(QThread):
             self.failed.emit(f"{type(exc).__name__}: {exc}")
 
 
+class RemoteTestThread(QThread):
+    ok = pyqtSignal()
+    failed = pyqtSignal(str)
+
+    def __init__(self, client: SubsonicClient, parent=None):
+        super().__init__(parent)
+        self._client = client
+
+    def run(self) -> None:
+        try:
+            self._client.ping()
+            self.ok.emit()
+        except Exception as exc:
+            self.failed.emit(f"{type(exc).__name__}: {exc}")
+
+
 class RemoteDialog(QDialog):
     play_requested = pyqtSignal(object)
 
@@ -48,6 +64,7 @@ class RemoteDialog(QDialog):
         self._config = config
         self._client = make_client(config)
         self._thread: RemoteSearchThread | None = None
+        self._test_thread: RemoteTestThread | None = None
         self._songs: list[RemoteSong] = []
 
         layout = QVBoxLayout(self)
@@ -60,7 +77,10 @@ class RemoteDialog(QDialog):
         self._search.returnPressed.connect(self._start_search)
         self._button = QPushButton("搜索")
         self._button.clicked.connect(self._start_search)
+        test = QPushButton("测试连接")
+        test.clicked.connect(self._test_connection)
         top.addWidget(self._search, 1)
+        top.addWidget(test)
         top.addWidget(self._button)
         layout.addLayout(top)
 
@@ -95,6 +115,21 @@ class RemoteDialog(QDialog):
             self._status.setText("远程媒体库已配置；输入关键词搜索。")
         else:
             self._status.setText("请先在 设置 → 远程媒体库 填写服务器地址、用户名和密码。")
+
+    def _test_connection(self) -> None:
+        if not self._client.configured:
+            QMessageBox.information(
+                self, "远程媒体库",
+                "请先在 设置 → 远程媒体库 填写服务器地址、用户名和密码。",
+            )
+            return
+        if self._test_thread is not None and self._test_thread.isRunning():
+            return
+        self._status.setText("正在测试连接…")
+        self._test_thread = RemoteTestThread(self._client, self)
+        self._test_thread.ok.connect(lambda: self._status.setText("连接成功：Subsonic ping OK"))
+        self._test_thread.failed.connect(lambda message: self._status.setText(f"连接失败：{message}"))
+        self._test_thread.start()
 
     def _start_search(self) -> None:
         if not self._client.configured:
@@ -145,7 +180,8 @@ class RemoteDialog(QDialog):
         self.play_requested.emit(self._songs[row])
 
     def closeEvent(self, event) -> None:
-        if self._thread is not None and self._thread.isRunning():
-            self._thread.requestInterruption()
-            self._thread.wait(9000)
+        for thread in (self._thread, self._test_thread):
+            if thread is not None and thread.isRunning():
+                thread.requestInterruption()
+                thread.wait(9000)
         super().closeEvent(event)
