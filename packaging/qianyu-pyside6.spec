@@ -11,7 +11,7 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 spec_dir = globals().get("SPECPATH") or os.path.dirname(os.path.abspath(__file__))
 root = os.path.abspath(os.path.join(spec_dir, ".."))
-hiddenimports = ["mpv", "cryptography", "imageio_ffmpeg"] + collect_submodules("mutagen")
+hiddenimports = ["mpv", "cryptography", "imageio_ffmpeg", "pypinyin"] + collect_submodules("mutagen")
 datas = [
     (os.path.join(root, "src", "qianyu", "ui", "theme"), "qianyu/ui/theme"),
 ] + collect_data_files("imageio_ffmpeg")

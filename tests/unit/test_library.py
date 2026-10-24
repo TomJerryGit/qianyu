@@ -11,8 +11,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
-from qianyu.library import Library, fuzzy_score  # noqa: E402
+from qianyu.library import Library, fuzzy_score, search_score  # noqa: E402
 from qianyu.core.models import Track  # noqa: E402
+from qianyu.core.pinyin import variants as pinyin_variants  # noqa: E402
 
 FIX = ROOT / "spike" / "fixtures"
 
@@ -70,6 +71,16 @@ class LibraryTests(unittest.TestCase):
         self.assertGreater(fuzzy_score("singel", track), 0.5)
         self.assertEqual(fuzzy_score("single", track), 1.0)
         self.assertLess(fuzzy_score("zzzzzz", track), 0.5)
+
+    def test_pinyin_and_ranking(self):
+        full, initials = pinyin_variants("周杰伦")
+        self.assertIn("zhoujielun", full)
+        self.assertIn("zjl", initials)
+        basic = Track(path="a.wav", title="稻香", artist="周杰伦")
+        favorite = Track(path="b.wav", title="稻香", artist="周杰伦",
+                         favorite=True, play_count=3)
+        self.assertGreater(search_score("稻香", favorite),
+                           search_score("稻香", basic))
 
     def test_remove_missing(self):
         self.library.scan(self.music)

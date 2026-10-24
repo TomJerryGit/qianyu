@@ -21,6 +21,34 @@ from pathlib import Path
 from typing import Callable, Iterable, Optional
 
 from .core.models import Track
+from .core.pinyin import lazy_pinyin, variants as pinyin_variants
+
+def search_score(query: str, track: Track) -> float:
+    """Rank a match: title/artist/album text, then favorites and play count."""
+    needle = re.sub(r"\s+", "", str(query or "").casefold())
+    if not needle:
+        return 0.0
+    title = re.sub(r"\s+", "", str(track.title or "").casefold())
+    artist = re.sub(r"\s+", "", str(track.artist or "").casefold())
+    album = re.sub(r"\s+", "", str(track.album or "").casefold())
+    score = 0.0
+    if title == needle:
+        score += 100
+    elif title.startswith(needle):
+        score += 80
+    elif needle in title:
+        score += 60
+    if artist == needle:
+        score += 75
+    elif needle in artist:
+        score += 45
+    if needle in album:
+        score += 30
+    if track.favorite:
+        score += 8
+    score += min(5, int(track.play_count or 0))
+    return score
+
 
 def fuzzy_score(query: str, track: Track) -> float:
     """Typo-tolerant score for a track's title/artist/album."""
@@ -111,6 +139,7 @@ class Library:
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.covers_dir = Path(covers_dir) if covers_dir else self.db_path.parent / "covers"
+        self._pinyin_cache: dict[tuple[str, str, str], tuple[str, str]] = {}
         try:
             self.covers_dir.mkdir(parents=True, exist_ok=True)
         except OSError:
@@ -476,23 +505,50 @@ class Library:
                 rows = conn.execute(
                     f"""SELECT * FROM tracks
                         WHERE {' AND '.join(clauses)}
-                        ORDER BY artist COLLATE NOCASE, album COLLATE NOCASE,
-                                 track_no, title
                         LIMIT 500""",
                     values,
                 ).fetchall()
             if rows:
-                return [self._row_to_track(row) for row in rows]
+                tracks = [self._row_to_track(row) for row in rows]
+                tracks.sort(key=lambda item: (-search_score(keyword, item),
+                                              item.title.casefold()))
+                return tracks[:200]
+        # Pinyin: zjl / zhoujielun / dx for Chinese titles and artists.
+        compact = re.sub(r"\s+", "", keyword.casefold())
+        if compact.isascii() and len(compact) >= 2 and lazy_pinyin is not None:
+            scored = []
+            for track in self.tracks():
+                full, initials = self._pinyin_for(track)
+                if compact in full or compact in initials:
+                    matched = search_score(keyword, track)
+                    scored.append((matched + 20, track))
+            if scored:
+                scored.sort(key=lambda item: (-item[0], item[1].title.casefold()))
+                return [track for _score, track in scored[:200]]
         # No substring hit: typo-tolerant search over the current library.
         if len(keyword) >= 2:
             scored = []
             for track in self.tracks():
                 score = fuzzy_score(keyword, track)
                 if score >= 0.52:
-                    scored.append((score, track))
+                    scored.append((score * 40 + search_score(keyword, track), track))
             scored.sort(key=lambda item: (-item[0], item[1].title.casefold()))
             return [track for _score, track in scored[:200]]
         return []
+
+    def _pinyin_for(self, track: Track) -> tuple[str, str]:
+        key = (track.title or "", track.artist or "", track.album or "")
+        cached = self._pinyin_cache.get(key)
+        if cached is not None:
+            return cached
+        full, initials = pinyin_variants(
+            " ".join(part for part in (track.title, track.artist, track.album) if part)
+        )
+        result = (full, initials)
+        if len(self._pinyin_cache) > 50000:
+            self._pinyin_cache.clear()
+        self._pinyin_cache[key] = result
+        return result
 
     def get(self, path: str) -> Optional[Track]:
         with closing(self._connect()) as conn:

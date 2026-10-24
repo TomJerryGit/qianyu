@@ -89,7 +89,8 @@
 ### 8. 统一搜索与平台深链
 
 - 「在线 → 统一搜索…」查询本地、Subsonic/Navidrome、Jellyfin；
-- 本地搜索支持多关键词、子串、拼写容错（编辑距离）；
+- 本地搜索支持多关键词、子串、拼写容错（编辑距离）、拼音全拼/首字母；
+- 搜索排序考虑标题/艺术家匹配、收藏、播放次数；
 - 「在线 → 在平台搜索…」用官方搜索页打开 Spotify/Apple Music/YouTube Music/网易云/QQ 音乐/Bandcamp/Internet Archive/Jamendo/Deezer；
 - 只打开官方页面，不抓取、不代理、不绕过 DRM。
 
