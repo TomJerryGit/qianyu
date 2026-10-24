@@ -9,7 +9,7 @@
 - 右侧歌词；
 - 底部传输控制；
 - 「视图 → 经典音乐模式」打开全屏大封面/歌词页；
-- 全屏页含动态频谱（装饰性）、歌手写真（本地 `artist.jpg` 或 Deezer 公共搜索，失败静默）；
+- 全屏页含真实频谱（本地文件由 FFmpeg 解码 + Goertzel 分析，跟随播放位置；流媒体/电台回退为装饰动画）、歌手写真（本地 `artist.jpg` 或 Deezer 公共搜索，失败静默）；
 - 设置 → 主题 → **经典金属** 切换经典皮肤。
 
 实现：`ui/now_playing.py`、`ui/spectrum.py`、`ui/theme/classic.qss`。

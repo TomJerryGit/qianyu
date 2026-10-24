@@ -1317,6 +1317,8 @@ class MainWindow(QMainWindow):
             self._scrobbler.tick(
                 self._current, position, duration or float(self._current.duration or 0)
             )
+        if self._now_page is not None:
+            self._now_page.set_playback_position(position)
         if self._radio_station is not None:
             title = self._engine.stream_title
             if title and title != self._radio_stream_title:
