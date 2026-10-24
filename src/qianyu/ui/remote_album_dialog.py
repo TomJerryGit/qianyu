@@ -6,13 +6,52 @@ from __future__ import annotations
 
 from ..qt import (
     QAbstractItemView, QComboBox, QDialog, QHBoxLayout, QHeaderView, QLabel,
-    QLineEdit, QMessageBox, QPushButton, QSplitter, QTableWidget,
+    QLineEdit, QMessageBox, QPixmap, QPushButton, QSplitter, QTableWidget,
     QTableWidgetItem, QThread, QVBoxLayout, Qt, pyqtSignal,
 )
 from ..core.jellyfin import JellyfinClient, JellyfinError
 from ..core.secure_store import SecretStore
 from ..core.subsonic import RemoteAlbum, RemoteSong
 from .remote_dialog import make_client
+import urllib.request
+
+
+class AlbumCoverThread(QThread):
+    cover = pyqtSignal(bytes)
+
+    def __init__(self, provider: str, config, album_id: str, cover_id: str,
+                 parent=None):
+        super().__init__(parent)
+        self._provider = provider
+        self._config = config
+        self._album_id = album_id
+        self._cover_id = cover_id
+
+    def run(self) -> None:
+        try:
+            if self._provider == "jellyfin":
+                client = JellyfinClient(
+                    str(self._config.get("jellyfin_url", "")),
+                    str(self._config.get("jellyfin_user", "")),
+                    SecretStore(self._config).get("jellyfin_password"),
+                    SecretStore(self._config).get("jellyfin_token"),
+                    str(self._config.get("jellyfin_user_id", "")),
+                )
+                if not client.token or not client.user_id:
+                    client.login()
+                url = (f"{client.server}/Items/{self._album_id}/Images/Primary?"
+                       f"api_key={client.token}")
+            else:
+                client = make_client(self._config)
+                url = client.cover_url_for(self._cover_id)
+            if not url:
+                return
+            with urllib.request.urlopen(url, timeout=10) as response:
+                data = response.read(2 * 1024 * 1024)
+            if data:
+                self.cover.emit(data)
+        except Exception:
+            pass
 
 
 class AlbumLoadThread(QThread):
@@ -108,6 +147,18 @@ class RemoteAlbumDialog(QDialog):
         top.addWidget(self._status, 1)
         layout.addLayout(top)
 
+        cover_row = QHBoxLayout()
+        self._cover = QLabel("封面")
+        self._cover.setFixedSize(140, 140)
+        self._cover.setAlignment(Qt.AlignCenter)
+        self._cover.setScaledContents(False)
+        self._cover_info = QLabel("")
+        self._cover_info.setWordWrap(True)
+        cover_row.addWidget(self._cover)
+        cover_row.addWidget(self._cover_info, 1)
+        cover_row.addStretch(1)
+        layout.addLayout(cover_row)
+
         splitter = QSplitter(Qt.Vertical)
         self._album_table = QTableWidget(0, 4)
         self._album_table.setHorizontalHeaderLabels(["专辑", "艺术家", "年份", "曲数"])
@@ -191,12 +242,37 @@ class RemoteAlbumDialog(QDialog):
         if not (0 <= row < len(self._albums)):
             return
         album = self._albums[row]
+        self._cover_album_id = str(album.id)
+        self._cover.setText("加载中…")
+        self._cover_info.setText(
+            f"{album.name}\n{album.artist}\n{album.year or ''} · {album.song_count or ''} 首"
+        )
+        cover_thread = AlbumCoverThread(
+            str(self._provider.currentData()), self._config,
+            str(album.id), str(getattr(album, "cover_id", "") or ""), self,
+        )
+        cover_thread.cover.connect(
+            lambda data, album_id=str(album.id): self._show_cover(album_id, data)
+        )
+        self._threads.append(cover_thread)
+        cover_thread.start()
         thread = AlbumSongsThread(str(self._provider.currentData()), self._config,
                                   album.id, self)
         thread.songs.connect(self._show_songs)
         thread.failed.connect(self._show_error)
         self._threads.append(thread)
         thread.start()
+
+    def _show_cover(self, album_id: str, data: bytes) -> None:
+        if album_id != getattr(self, "_cover_album_id", ""):
+            return
+        pixmap = QPixmap()
+        if not pixmap.loadFromData(data):
+            return
+        size = self._cover.size()
+        self._cover.setPixmap(pixmap.scaled(
+            size, Qt.KeepAspectRatio, Qt.SmoothTransformation
+        ))
 
     def _show_songs(self, songs: list) -> None:
         self._songs = list(songs)

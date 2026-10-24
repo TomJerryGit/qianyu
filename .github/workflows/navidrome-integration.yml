@@ -1,0 +1,55 @@
+name: navidrome-integration
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "src/qianyu/core/subsonic.py"
+      - "tools/navidrome_integration.py"
+      - ".github/workflows/navidrome-integration.yml"
+  pull_request:
+    paths:
+      - "src/qianyu/core/subsonic.py"
+      - "tools/navidrome_integration.py"
+      - ".github/workflows/navidrome-integration.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  subsonic:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Download Navidrome
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $url = "https://github.com/navidrome/navidrome/releases/download/v0.64.2/navidrome_0.64.2_windows_amd64.zip"
+          New-Item -ItemType Directory -Force -Path tools | Out-Null
+          curl.exe -L --fail --retry 3 --retry-delay 2 -o tools/navidrome.zip $url
+          $hash = (Get-FileHash tools/navidrome.zip -Algorithm SHA256).Hash.ToLower()
+          if ($hash -ne "72e06c9101fca6b14ff1437f9a56beb7ad6fe4bd7f25ff62cd5b70a075fee305") {
+            throw "Navidrome SHA256 mismatch: $hash"
+          }
+          Expand-Archive -Path tools/navidrome.zip -DestinationPath tools/navidrome -Force
+          Get-ChildItem tools/navidrome
+      - name: Run Subsonic integration
+        shell: pwsh
+        run: |
+          $env:PYTHONIOENCODING = "utf-8"
+          python -X utf8 -u tools/navidrome_integration.py
+          if ($LASTEXITCODE -ne 0) { throw "integration failed: $LASTEXITCODE" }
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: navidrome-integration-result
+          path: |
+            tools/navidrome_integration.log
+            tools/navidrome_integration.json
+          if-no-files-found: warn

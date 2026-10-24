@@ -47,6 +47,20 @@ https://sgp1.mirror.jellyfin.org/files/server/windows/stable/v12.3/amd64/jellyfi
 5. 完成首次设置：管理员账号、媒体库（音乐目录）；
 6. 等待扫描完成。
 
+## 下载
+
+后台下载/续传脚本：
+
+```powershell
+python tools\download_jellyfin.py
+```
+
+当前镜像约 20–30 KB/s；完成后校验 SHA-256：
+
+```
+64b81a7b01b4dfb4ad3380a367cdeaf59878d9070c0d5e0cf84025e58ed3e853
+```
+
 ## 配置 QianYu
 
 ```

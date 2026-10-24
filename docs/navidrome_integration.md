@@ -67,6 +67,24 @@ QianYu 的 Subsonic 客户端已通过真实 Navidrome 的：
 
 这不是 mock 测试，而是真实 Navidrome 进程。
 
+## CI
+
+`.github/workflows/navidrome-integration.yml` 在 `windows-latest` 上：
+
+1. 下载固定版本 Navidrome 0.64.2；
+2. 校验 SHA-256；
+3. 解压；
+4. 运行 `tools/navidrome_integration.py`；
+5. 上传日志和 JSON。
+
+触发条件：`workflow_dispatch`、修改 `subsonic.py`、修改联调脚本或 workflow。
+
+本地也可以直接运行同一脚本：
+
+```powershell
+python tools\navidrome_integration.py
+```
+
 ## 说明
 
 - 测试使用临时端口/临时数据目录，不修改用户现有 Navidrome 数据；
