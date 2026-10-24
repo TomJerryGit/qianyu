@@ -43,7 +43,15 @@ jobs:
         run: |
           $env:PYTHONIOENCODING = "utf-8"
           python -X utf8 -u tools/navidrome_integration.py
-          if ($LASTEXITCODE -ne 0) { throw "integration failed: $LASTEXITCODE" }
+          $code = $LASTEXITCODE
+          if (Test-Path tools/navidrome_integration.log) {
+            Get-Content tools/navidrome_integration.log
+          }
+          if (Test-Path tools/navidrome_server.log) {
+            Write-Host "--- server log ---"
+            Get-Content tools/navidrome_server.log -Tail 40
+          }
+          if ($code -ne 0) { throw "integration failed: $code" }
       - name: Upload result
         if: always()
         uses: actions/upload-artifact@v4
@@ -52,4 +60,5 @@ jobs:
           path: |
             tools/navidrome_integration.log
             tools/navidrome_integration.json
+            tools/navidrome_server.log
           if-no-files-found: warn
