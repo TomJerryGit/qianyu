@@ -10,10 +10,10 @@ from ..qt import (
     QTableWidgetItem, QThread, QVBoxLayout, Qt, pyqtSignal,
 )
 from ..core.jellyfin import JellyfinClient, JellyfinError
+from ..core.net import fetch_limited
 from ..core.secure_store import SecretStore
 from ..core.subsonic import RemoteAlbum, RemoteSong
 from .remote_dialog import make_client
-import urllib.request
 
 
 class AlbumCoverThread(QThread):
@@ -45,8 +45,7 @@ class AlbumCoverThread(QThread):
                 url = client.cover_url_for(self._cover_id)
             if not url:
                 return
-            with urllib.request.urlopen(url, timeout=10) as response:
-                data = response.read(2 * 1024 * 1024)
+            data = fetch_limited(url, timeout=10, max_bytes=8 * 1024 * 1024)
             if data:
                 self.cover.emit(data)
         except Exception:

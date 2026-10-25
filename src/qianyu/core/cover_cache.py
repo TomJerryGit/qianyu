@@ -5,15 +5,17 @@
 from __future__ import annotations
 
 import hashlib
-import urllib.request
 from pathlib import Path
+
+from .net import UnsafeUrl, fetch_limited, safe_http_url
 
 USER_AGENT = "QianYu/0.9 (local media player)"
 
 
 def fetch_cover(url: str, cache_dir: str | Path, timeout: float = 6.0) -> Path | None:
-    url = str(url or "").strip()
-    if not url.lower().startswith(("http://", "https://")):
+    try:
+        url = safe_http_url(url)
+    except UnsafeUrl:
         return None
     root = Path(cache_dir)
     root.mkdir(parents=True, exist_ok=True)
@@ -21,10 +23,8 @@ def fetch_cover(url: str, cache_dir: str | Path, timeout: float = 6.0) -> Path |
     path = root / f"cover_{key}.jpg"
     if path.is_file() and path.stat().st_size > 0:
         return path
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            data = response.read()
+        data = fetch_limited(url, timeout=timeout, max_bytes=8 * 1024 * 1024)
         if not data:
             return None
         temp = path.with_suffix(".part")

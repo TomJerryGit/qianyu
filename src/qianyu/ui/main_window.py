@@ -52,6 +52,7 @@ from ..core.metadata import fetch_cover, lookup_recording
 from ..core.radio import RadioStation
 from ..core.radio_presets import preset_stations
 from ..core.platform_links import platform_names, search_url
+from ..core.net import UnsafeUrl, safe_http_url
 from ..core.podcast import Episode
 from ..core.podcast_cache import PodcastCache
 from ..core.subsonic import RemoteSong
@@ -1809,8 +1810,10 @@ class MainWindow(QMainWindow):
         if not ok:
             return
         url = url.strip()
-        if not url.lower().startswith(("http://", "https://")):
-            QMessageBox.warning(self, "打开网络流", "只支持 http:// 或 https:// 地址。")
+        try:
+            url = safe_http_url(url)
+        except UnsafeUrl:
+            QMessageBox.warning(self, "打开网络流", "只支持不带凭据的 http:// 或 https:// 地址。")
             return
         self._play_radio(RadioStation(name=url, url=url))
 
@@ -1922,9 +1925,10 @@ class MainWindow(QMainWindow):
             duration=episode.duration or 0.0,
             cover="",
         )
-        self._play_online_track(
-            track, f"播客：{episode.title}" + ("（缓存）" if cached is not None else "")
-        )
+        if cached is not None:
+            self._start_track(track)
+        else:
+            self._play_online_track(track, f"播客：{episode.title}")
         self._podcast_url = episode.url
         played = list(self._config.get("podcast_played", []) or [])
         if episode.url not in played:
@@ -1977,6 +1981,15 @@ class MainWindow(QMainWindow):
         self._show_radio_view(station)
 
     def _play_online_track(self, track: Track, status: str) -> None:
+        path_text = str(track.path or "")
+        if not path_text.lower().startswith(("http://", "https://")):
+            self._status.showMessage("在线播放只接受 HTTP/HTTPS 地址。")
+            return
+        try:
+            safe_http_url(path_text)
+        except UnsafeUrl as exc:
+            self._status.showMessage(f"拒绝不安全的 URL：{exc}")
+            return
         if self._radio_window is not None:
             self._radio_window.hide()
         self._remote_queue = []

@@ -25,8 +25,8 @@ class _Response:
     def __exit__(self, *args):
         return False
 
-    def read(self):
-        return self._payload
+    def read(self, size=-1):
+        return self._payload if size < 0 else self._payload[:size]
 
 
 class ArtistImageTests(unittest.TestCase):
@@ -40,12 +40,12 @@ class ArtistImageTests(unittest.TestCase):
         def fake_urlopen(request, timeout=0):
             return _Response(search if "search/artist" in request.full_url else image)
 
-        with patch("qianyu.core.artist_image.urllib.request.urlopen", side_effect=fake_urlopen):
+        with patch("qianyu.core.net.urllib.request.urlopen", side_effect=fake_urlopen):
             path = fetch_artist_image("Coldplay", root)
         self.assertIsNotNone(path)
         self.assertTrue(path.is_file())
         self.assertEqual(path.read_bytes(), image)
-        with patch("qianyu.core.artist_image.urllib.request.urlopen") as urlopen:
+        with patch("qianyu.core.net.urllib.request.urlopen") as urlopen:
             again = fetch_artist_image("Coldplay", root)
         self.assertEqual(again, path)
         urlopen.assert_not_called()

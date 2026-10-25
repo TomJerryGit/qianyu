@@ -11,8 +11,9 @@ from __future__ import annotations
 import hashlib
 import json
 import urllib.parse
-import urllib.request
 from pathlib import Path
+
+from .net import UnsafeUrl, fetch_limited, safe_http_url
 
 USER_AGENT = "QianYu/0.9 (local media player)"
 DEEZER_SEARCH = "https://api.deezer.com/search/artist"
@@ -34,21 +35,22 @@ def fetch_artist_image(artist: str, cache_dir: str | Path,
     if path.is_file() and path.stat().st_size > 0:
         return path
     query = urllib.parse.urlencode({"q": artist, "limit": 1})
-    request = urllib.request.Request(f"{DEEZER_SEARCH}?{query}",
-                                     headers={"User-Agent": USER_AGENT})
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            payload = json.loads(response.read().decode("utf-8", "replace"))
+        payload = json.loads(
+            fetch_limited(f"{DEEZER_SEARCH}?{query}", timeout=timeout,
+                          max_bytes=512 * 1024).decode("utf-8", "replace")
+        )
         data = payload.get("data") if isinstance(payload, dict) else None
         if not isinstance(data, list) or not data:
             return None
         picture = data[0].get("picture_xl") or data[0].get("picture_big")
         if not picture:
             return None
-        image_request = urllib.request.Request(str(picture),
-                                               headers={"User-Agent": USER_AGENT})
-        with urllib.request.urlopen(image_request, timeout=timeout) as response:
-            image = response.read()
+        try:
+            safe_http_url(str(picture))
+        except UnsafeUrl:
+            return None
+        image = fetch_limited(str(picture), timeout=timeout, max_bytes=4 * 1024 * 1024)
         if not image:
             return None
         temp = path.with_suffix(".part")

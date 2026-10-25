@@ -32,7 +32,7 @@
 - 更新检查：manifest 版本比较 + 可选 Ed25519 签名 + SHA-256 校验下载；下载后可退出并运行安装包（自动替换待做）。
 - 日志/崩溃：轮转日志、`faulthandler`、异常钩子与崩溃提示。
 - **在线**：网络电台搜索/播放（Radio Browser）、播客搜索/RSS/订阅/下载缓存、ListenBrainz Scrobbling（可选）、Navidrome/Subsonic + Jellyfin 远程媒体库与统一搜索、HTTP/HTTPS 网络流、在线歌词/封面/元数据补全。
-- 工程：79 个单元测试、无头 UI 冒烟、1 万曲/100 首基准、GitHub Actions 骨架。
+- 工程：82 个单元测试、无头 UI 冒烟、1 万曲/100 首基准、GitHub Actions 骨架。
 
 ## 运行
 
@@ -147,6 +147,9 @@ tests/unit/      单元测试
 - [Navidrome 真实联调记录](docs/navidrome_integration.md)
 - [Jellyfin 联调与安装说明](docs/jellyfin_integration.md)
 - [本地自动验收记录](docs/acceptance.md)
+- [安全策略与威胁模型](SECURITY.md)
+- [安全威胁模型详解](docs/security.md)
+- [性能预算](docs/performance_budget.md)
 - [在线内容与版权合规](docs/online_compliance.md)
 - [版权声明](COPYRIGHT)
 - [第三方内容/服务声明](NOTICE)

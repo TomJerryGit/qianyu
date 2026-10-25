@@ -13,8 +13,11 @@ import urllib.request
 from pathlib import Path
 from typing import Callable
 
+from .net import safe_http_url
+
 USER_AGENT = "QianYu/0.9 (local media player)"
 AUDIO_SUFFIXES = {".mp3", ".m4a", ".m4b", ".aac", ".ogg", ".opus", ".wav", ".flac", ".mp4"}
+MAX_EPISODE_BYTES = 1024 * 1024 * 1024
 
 
 class PodcastCache:
@@ -76,6 +79,7 @@ class PodcastCache:
     def download(self, url: str, title: str = "", timeout: float = 30.0,
                  progress: Callable[[int, int], None] | None = None,
                  cancelled: Callable[[], bool] | None = None) -> Path:
+        url = safe_http_url(url)
         existing = self.get(url)
         if existing is not None:
             return existing
@@ -85,6 +89,8 @@ class PodcastCache:
         try:
             with urllib.request.urlopen(request, timeout=timeout) as response, temp.open("wb") as handle:
                 total = int(response.headers.get("Content-Length") or 0)
+                if total > MAX_EPISODE_BYTES:
+                    raise RuntimeError("播客文件超过大小限制")
                 done = 0
                 while True:
                     if cancelled is not None and cancelled():
@@ -92,8 +98,10 @@ class PodcastCache:
                     chunk = response.read(1024 * 1024)
                     if not chunk:
                         break
-                    handle.write(chunk)
                     done += len(chunk)
+                    if done > MAX_EPISODE_BYTES:
+                        raise RuntimeError("播客文件超过大小限制")
+                    handle.write(chunk)
                     if progress is not None:
                         progress(done, total)
         except Exception:
