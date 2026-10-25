@@ -1,0 +1,54 @@
+name: jellyfin-integration
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "src/qianyu/core/jellyfin.py"
+      - "tools/jellyfin_integration.py"
+      - ".github/workflows/jellyfin-integration.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  jellyfin:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Download Jellyfin
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $url = "https://repo.jellyfin.org/files/server/windows/latest-stable/amd64/jellyfin_12.3-amd64.zip"
+          New-Item -ItemType Directory -Force -Path tools | Out-Null
+          curl.exe -L --fail --retry 3 --retry-delay 2 -o tools/jellyfin.zip $url
+          $hash = (Get-FileHash tools/jellyfin.zip -Algorithm SHA256).Hash.ToLower()
+          if ($hash -ne "64b81a7b01b4dfb4ad3380a367cdeaf59878d9070c0d5e0cf84025e58ed3e853") {
+            throw "Jellyfin SHA256 mismatch: $hash"
+          }
+          Expand-Archive -Path tools/jellyfin.zip -DestinationPath tools/jellyfin-server -Force
+          Get-ChildItem tools/jellyfin-server
+      - name: Run Jellyfin integration
+        shell: pwsh
+        run: |
+          $env:PYTHONIOENCODING = "utf-8"
+          python -X utf8 -u tools/jellyfin_integration.py
+          $code = $LASTEXITCODE
+          if (Test-Path tools/jellyfin_integration.log) {
+            Get-Content tools/jellyfin_integration.log
+          }
+          if ($code -ne 0) { throw "integration failed: $code" }
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jellyfin-integration-result
+          path: |
+            tools/jellyfin_integration.log
+            tools/jellyfin_integration.json
+          if-no-files-found: warn

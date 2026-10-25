@@ -98,7 +98,15 @@ QianYu 的 Jellyfin 客户端已通过真实 Jellyfin 12.3：
 - 专辑曲目；
 - 音频串流。
 
-## 配置 QianYu
+## 在应用中连接本地 Jellyfin
+
+测试服务器可手动启动：
+
+```powershell
+D:\qianyu\tools\start_jellyfin.cmd
+```
+
+然后应用设置：
 
 ```
 设置 → 远程媒体库 → Jellyfin
@@ -107,7 +115,26 @@ QianYu 的 Jellyfin 客户端已通过真实 Jellyfin 12.3：
 密码：qianyu-test-pass
 ```
 
-测试使用临时数据目录，不修改用户现有 Jellyfin 数据；服务器在测试结束后停止。
+测试数据：
+
+```
+Test Artist / Test Album / Test Song
+```
+
+## CI
+
+`.github/workflows/jellyfin-integration.yml`：
+
+- 仅手动触发或修改 Jellyfin 客户端时运行；
+- 下载固定版本 Jellyfin；
+- 校验 SHA-256；
+- 运行真实启动向导/登录/搜索/专辑/串流测试。
+
+本地脚本：
+
+```powershell
+python tools\jellyfin_integration.py
+```
 
 ## 说明
 
