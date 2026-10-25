@@ -2,11 +2,6 @@ name: jellyfin-integration
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - "src/qianyu/core/jellyfin.py"
-      - "tools/jellyfin_integration.py"
-      - ".github/workflows/jellyfin-integration.yml"
 
 permissions:
   contents: read
