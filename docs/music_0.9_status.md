@@ -178,6 +178,8 @@
 
 **Round 57 新增**：远程专辑封面 UI 测试、Jellyfin 真实联调 CI 工作流（手动/路径触发）；单测增至 77。
 
+**Round 58 新增**：Jellyfin 真实联调 CI 已通过（run 40187787028）；修复 CI 脚本硬编码路径。
+
 **Round 31 新增**：Radio Browser 网络电台搜索/播放、网络流地址播放；单测增至 35。
 
 **实测数据（`spike/ui_smoke.py`）**：

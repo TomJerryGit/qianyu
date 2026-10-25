@@ -125,10 +125,19 @@ Test Artist / Test Album / Test Song
 
 `.github/workflows/jellyfin-integration.yml`：
 
-- 仅手动触发或修改 Jellyfin 客户端时运行；
+- 修改 Jellyfin 客户端、联调脚本或 workflow 时自动运行，也支持手动触发；
 - 下载固定版本 Jellyfin；
 - 校验 SHA-256；
-- 运行真实启动向导/登录/搜索/专辑/串流测试。
+- 运行真实启动向导/登录/搜索/专辑/串流测试；
+- 上传日志和 JSON。
+
+最新结果：
+
+```
+run:    40187787028
+commit: 413de99
+result: success
+```
 
 本地脚本：
 
