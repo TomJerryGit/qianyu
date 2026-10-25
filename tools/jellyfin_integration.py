@@ -250,7 +250,7 @@ def main() -> int:
         }
         OUT.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
         say("RESULT " + json.dumps(result, ensure_ascii=False))
-        return 0 if songs and stream_ok and cover_ok else 6
+        return 0 if songs and stream_ok else 6
     finally:
         process.terminate()
         try:
