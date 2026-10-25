@@ -26,8 +26,8 @@ Source = "https://github.com/TomJerryGit/qianyu"
 Issues = "https://github.com/TomJerryGit/qianyu/issues"
 
 [project.optional-dependencies]
-test = ["pytest>=8.0", "Pillow>=10.0", "numpy>=1.24", "cryptography>=41"]
-pyside6 = ["PySide6-Essentials>=6.8,<6.9", "python-mpv>=1.0.6", "mutagen>=1.47.0", "Pillow>=10.0", "pypinyin>=0.53"]
+test = ["pytest>=8.0", "Pillow>=10.0", "numpy>=1.24", "cryptography>=41", "imageio-ffmpeg>=0.5"]
+pyside6 = ["PySide6-Essentials>=6.8,<6.9", "python-mpv>=1.0.6", "mutagen>=1.47.0", "Pillow>=10.0", "pypinyin>=0.53", "imageio-ffmpeg>=0.5"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

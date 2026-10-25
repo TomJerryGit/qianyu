@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import os
+import subprocess
 from pathlib import Path
 
 from ..qt import (
@@ -14,7 +15,7 @@ from ..qt import (
 from ..core.models import Track
 from ..core.artist_image import fetch_artist_image
 from ..core.cover_cache import fetch_cover
-from ..core.spectrum_analyzer import analyze_file, analyze_pcm
+from ..core.spectrum_analyzer import SAMPLE_RATE, analyze_pcm
 from ..core.wasapi_loopback import WasapiLoopback
 from .spectrum import SpectrumWidget
 
@@ -27,8 +28,100 @@ class SpectrumAnalyzerThread(QThread):
         self._path = path
 
     def run(self) -> None:
+        from ..core.spectrum_analyzer import analyze_file
+
         frames = analyze_file(self._path, cancelled=self.isInterruptionRequested)
         self.analysed.emit(frames)
+
+
+class StreamSpectrumThread(QThread):
+    """Decode a local file or remote stream with FFmpeg, progressively.
+
+    Unlike WASAPI loopback this also works when the desktop has no audible
+    output endpoint (CI/sandbox), and it starts displaying levels immediately
+    instead of waiting for a whole track to be decoded.
+    """
+
+    levels = pyqtSignal(list)
+    started = pyqtSignal()
+    finished_with_data = pyqtSignal(bool)
+
+    def __init__(self, source: str, live: bool = False, parent=None):
+        super().__init__(parent)
+        self._source = str(source)
+        self._live = bool(live)
+        self._process: subprocess.Popen | None = None
+
+    def stop(self) -> None:
+        self.requestInterruption()
+        process = self._process
+        if process is not None:
+            try:
+                process.kill()
+            except Exception:
+                pass
+
+    def run(self) -> None:
+        try:
+            import imageio_ffmpeg
+
+            ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
+        except Exception:
+            self.finished_with_data.emit(False)
+            return
+        command = [
+            ffmpeg, "-v", "error",
+        ]
+        if self._live:
+            command += [
+                "-reconnect", "1", "-reconnect_streamed", "1",
+                "-reconnect_delay_max", "5",
+            ]
+        command += [
+            "-i", self._source, "-vn", "-f", "s16le", "-ac", "1",
+            "-ar", str(SAMPLE_RATE), "-",
+        ]
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        try:
+            self._process = subprocess.Popen(
+                command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                creationflags=flags,
+            )
+        except Exception:
+            self.finished_with_data.emit(False)
+            return
+        got_data = False
+        try:
+            stream = self._process.stdout
+            while not self.isInterruptionRequested() and stream is not None:
+                chunk = stream.read(4096)
+                if not chunk:
+                    break
+                frames = analyze_pcm(chunk)
+                if frames:
+                    if not got_data:
+                        got_data = True
+                        self.started.emit()
+                    self.levels.emit(list(frames[-1][1]))
+        except Exception:
+            pass
+        finally:
+            process = self._process
+            if process is not None:
+                try:
+                    process.kill()
+                except Exception:
+                    pass
+                try:
+                    process.wait(timeout=2)
+                except Exception:
+                    pass
+                try:
+                    if process.stdout is not None:
+                        process.stdout.close()
+                except Exception:
+                    pass
+            self.finished_with_data.emit(got_data)
 
 
 class WasapiSpectrumThread(QThread):
@@ -96,10 +189,12 @@ class NowPlayingPage(QWidget):
         self._artist_thread: ArtistImageThread | None = None
         self._cover_thread: CoverImageThread | None = None
         self._spectrum_thread: SpectrumAnalyzerThread | None = None
+        self._stream_thread: StreamSpectrumThread | None = None
         self._loopback_thread: WasapiSpectrumThread | None = None
         self._artist_token = 0
         self._cover_token = 0
         self._spectrum_token = 0
+        self._stream_token = 0
         self._track: Track | None = None
         self._background = QLabel(self)
         self._background.setScaledContents(True)
@@ -168,12 +263,15 @@ class NowPlayingPage(QWidget):
         self._spectrum.set_frames(None)
         self._spectrum.set_live_levels(None)
         path = str(track.path or "")
-        if path and not path.lower().startswith(("http://", "https://")) and Path(path).is_file():
-            self._stop_loopback()
-            self._start_spectrum_analysis(path)
+        local_file = bool(path) and not path.lower().startswith(("http://", "https://")) and Path(path).is_file()
+        self._stop_loopback()
+        self._stop_spectrum_analysis()
+        self._stop_stream_analysis()
+        if path and (local_file or path.lower().startswith(("http://", "https://"))):
+            self._start_stream_analysis(path, live=not local_file)
         else:
-            self._stop_spectrum_analysis()
-            self._start_loopback()
+            self._spectrum_source.setText("频谱：装饰")
+        self._spectrum.set_playing(True)
         if str(track.cover or "").lower().startswith(("http://", "https://")):
             self._load_remote_cover(track.cover)
             return
@@ -222,7 +320,10 @@ class NowPlayingPage(QWidget):
             self._load_artist_image(self._track)
 
     def _load_artist_image(self, track: Track) -> None:
-        folder = Path(track.path).parent
+        path_text = str(track.path or "")
+        if path_text.lower().startswith(("http://", "https://")):
+            return
+        folder = Path(path_text).parent
         for name in ("artist.jpg", "artist.png", "folder.jpg", "folder.png"):
             local = folder / name
             if local.is_file():
@@ -279,6 +380,42 @@ class NowPlayingPage(QWidget):
             self._spectrum_thread.requestInterruption()
             self._spectrum_thread.wait(2000)
 
+    def _start_stream_analysis(self, source: str, live: bool = False) -> None:
+        self._stream_token += 1
+        token = self._stream_token
+        self._spectrum_source.setText("频谱：正在解码…")
+        thread = StreamSpectrumThread(source, live, self)
+        thread.started.connect(
+            lambda: self._spectrum_source.setText(
+                "频谱：实时 · 流分析" if live else "频谱：真实 · FFmpeg"
+            )
+        )
+        thread.levels.connect(self._spectrum.set_live_levels)
+        thread.finished_with_data.connect(
+            lambda ok: self._on_stream_finished(token, ok, live)
+        )
+        self._stream_thread = thread
+        thread.start()
+
+    def _stop_stream_analysis(self) -> None:
+        thread = self._stream_thread
+        if thread is not None:
+            thread.stop()
+            if thread.isRunning():
+                thread.wait(3000)
+            self._stream_thread = None
+
+    def _on_stream_finished(self, token: int, ok: bool, live: bool) -> None:
+        if token != self._stream_token:
+            return
+        if ok:
+            return
+        if live and os.environ.get("QT_QPA_PLATFORM") != "offscreen":
+            self._spectrum_source.setText("频谱：流分析失败，尝试 WASAPI")
+            self._start_loopback()
+        else:
+            self._spectrum_source.setText("频谱：装饰（无音频数据）")
+
     def _start_loopback(self) -> None:
         self._stop_loopback()
         if os.environ.get("QT_QPA_PLATFORM") == "offscreen":
@@ -324,6 +461,7 @@ class NowPlayingPage(QWidget):
             super().keyPressEvent(event)
 
     def closeEvent(self, event) -> None:
+        self._stop_stream_analysis()
         for thread in (self._artist_thread, self._cover_thread, self._spectrum_thread,
                        self._loopback_thread):
             if thread is not None and thread.isRunning():

@@ -32,24 +32,9 @@ LOG = ROOT / "tools" / "jellyfin_integration.log"
 def ensure_music() -> None:
     album_dir = MUSIC / "Test Artist" / "Test Album"
     album_dir.mkdir(parents=True, exist_ok=True)
-    track = album_dir / "01 - Test Song.mp3"
-    if not track.exists():
-        ffmpeg = SERVER.parent / "ffmpeg.exe"
-        subprocess.run(
-            [
-                str(ffmpeg), "-y", "-f", "lavfi", "-i", "sine=frequency=440:duration=2",
-                "-metadata", "title=Test Song", "-metadata", "artist=Test Artist",
-                "-metadata", "album=Test Album", "-metadata", "album_artist=Test Artist",
-                "-metadata", "track=1", "-metadata", "date=2026",
-                "-codec:a", "libmp3lame", "-q:a", "3", str(track),
-            ],
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+    ffmpeg = SERVER.parent / "ffmpeg.exe"
     cover = album_dir / "cover.jpg"
     if not cover.exists():
-        ffmpeg = SERVER.parent / "ffmpeg.exe"
         subprocess.run(
             [
                 str(ffmpeg), "-y", "-f", "lavfi", "-i", "color=c=0x2E86C1:s=128x128",
@@ -59,6 +44,32 @@ def ensure_music() -> None:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
+    track = album_dir / "01 - Test Song.mp3"
+    if not track.exists():
+        raw = album_dir / "raw.mp3"
+        subprocess.run(
+            [
+                str(ffmpeg), "-y", "-f", "lavfi", "-i", "sine=frequency=440:duration=2",
+                "-metadata", "title=Test Song", "-metadata", "artist=Test Artist",
+                "-metadata", "album=Test Album", "-metadata", "album_artist=Test Artist",
+                "-metadata", "track=1", "-metadata", "date=2026",
+                "-codec:a", "libmp3lame", "-q:a", "3", str(raw),
+            ],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        subprocess.run(
+            [
+                str(ffmpeg), "-y", "-i", str(raw), "-i", str(cover),
+                "-map", "0:a", "-map", "1:v", "-c:a", "copy", "-c:v", "mjpeg",
+                "-disposition:v", "attached_pic", "-id3v2_version", "3", str(track),
+            ],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        raw.unlink(missing_ok=True)
 
 
 
@@ -222,15 +233,19 @@ def main() -> int:
         cover_ok = False
         cover_bytes = 0
         if albums:
-            try:
-                with urllib.request.urlopen(
-                    client.album_cover_url(albums[0]), timeout=20
-                ) as response:
-                    cover = response.read(4096)
-                    cover_ok = response.status == 200 and bool(cover)
-                    cover_bytes = len(cover)
-            except Exception as exc:
-                say(f"COVER_ERROR {type(exc).__name__}: {exc}")
+            for _ in range(30):
+                try:
+                    with urllib.request.urlopen(
+                        client.album_cover_url(albums[0]), timeout=20
+                    ) as response:
+                        cover = response.read(4096)
+                        cover_ok = response.status == 200 and bool(cover)
+                        cover_bytes = len(cover)
+                        if cover_ok:
+                            break
+                except Exception as exc:
+                    say(f"COVER_WAIT {type(exc).__name__}: {exc}")
+                time.sleep(1)
             say(f"COVER {cover_ok} {cover_bytes}")
         stream_ok = False
         stream_bytes = 0
@@ -250,7 +265,7 @@ def main() -> int:
         }
         OUT.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
         say("RESULT " + json.dumps(result, ensure_ascii=False))
-        return 0 if songs and stream_ok else 6
+        return 0 if songs and stream_ok and cover_ok else 6
     finally:
         process.terminate()
         try:

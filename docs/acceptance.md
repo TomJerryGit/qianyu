@@ -117,18 +117,14 @@ python tools\jellyfin_integration.py
   "songs": 1,
   "albums": 1,
   "album_tracks": 1,
+  "cover": true,
+  "cover_bytes": 319,
   "stream": true,
   "stream_bytes": 4096
 }
 ```
 
-Jellyfin 封面：
-
-```
-COVER_ERROR HTTP 404
-```
-
-原因：测试专辑未生成 ImageTag；封面 URL/代码路径已有单测，真实 Jellyfin 封面仍待带内嵌封面素材验证。
+Jellyfin 封面：带内嵌封面 MP3 + 异步 ImageTag 重试后成功读取 319 字节 JPEG。
 
 CI：
 
@@ -136,7 +132,9 @@ CI：
 jellyfin-integration run 40189202265 success
 ```
 
-## 5. 桌面音频频谱
+## 5. 频谱
+
+### 5.1 WASAPI 桌面输出
 
 ```powershell
 python tools\wasapi_probe.py
@@ -154,25 +152,42 @@ START 0x0
 FRAMES_TOTAL 0
 ```
 
+当前执行环境没有实际音频输出，WASAPI 捕获为 0。
+
+### 5.2 FFmpeg 渐进式频谱（无需音频设备）
+
+```powershell
+python tools\spectrum_stream_test.py
+```
+
+结果：
+
+```
+LOCAL  SOURCE: 频谱：真实 · FFmpeg   LEVELS: 0.363
+STREAM SOURCE: 频谱：实时 · 流分析   LEVELS: 0.363
+LOCAL2 SOURCE: 频谱：真实 · FFmpeg   LEVELS: 0.363
+```
+
 结论：
 
-- WASAPI 初始化/启动成功；
-- 当前执行环境没有实际音频输出；
-- 捕获帧数为 0；
-- 桌面频谱仍需在真实音频会话中手动确认。
+- 本地文件和 HTTP 流均可实时输出真实频谱；
+- 不依赖桌面音频设备；
+- WASAPI 作为流分析失败时的回退；
+- 真实桌面波形仍建议人工确认一次。
 
 ## 6. 结论
 
 | 项 | 结果 |
 |---|---|
 | 便携安装/启动/卸载 | ✅ |
-| 78 单测 | ✅ |
+| 79 单测 | ✅ |
 | Navidrome 真实联调 | ✅ |
 | Navidrome CI | ✅ |
 | Jellyfin 真实联调 | ✅ |
 | Jellyfin CI | ✅ |
 | 远程专辑/串流 | ✅ |
-| Jellyfin 封面 | 🟡 测试素材无 ImageTag |
-| 桌面频谱 | ❌ 环境无音频输出 |
+| Jellyfin 封面 | ✅ 319 字节 |
+| 渐进式频谱 | ✅ 本地 + HTTP 流 |
+| WASAPI 桌面频谱 | 🟡 环境无音频设备 |
 
 剩余不是代码路径，而是真实桌面音频与 UI 交互验收。

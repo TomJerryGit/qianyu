@@ -33,6 +33,8 @@ python tools\jellyfin_integration.py
   "songs": 1,
   "albums": 1,
   "album_tracks": 1,
+  "cover": true,
+  "cover_bytes": 319,
   "stream": true,
   "stream_bytes": 4096
 }
@@ -54,10 +56,14 @@ LIBRARY 204
 REFRESH 204
 SEARCH 1 ALBUMS 1
 ALBUM_SONGS 1
+COVER True 319
 RESULT {"login": true, "songs": 1, "albums": 1, "album_tracks": 1,
+         "cover": true, "cover_bytes": 319,
          "stream": true, "stream_bytes": 4096}
 SERVER_STOPPED
 ```
+
+封面测试使用带内嵌封面的 MP3，并等待 Jellyfin 异步生成 ImageTag 后重试，最终成功读取 319 字节 JPEG。
 
 ## 联调发现并修复的问题
 
@@ -96,6 +102,7 @@ QianYu 的 Jellyfin 客户端已通过真实 Jellyfin 12.3：
 - 搜索；
 - 专辑列表；
 - 专辑曲目；
+- 封面（319 字节 JPEG）；
 - 音频串流。
 
 ## 在应用中连接本地 Jellyfin
