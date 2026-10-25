@@ -7,6 +7,8 @@ on:
 jobs:
   test:
     runs-on: windows-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
     strategy:
       matrix:
         python-version: ["3.11"]
@@ -23,8 +25,12 @@ jobs:
         run: python -m compileall -q src
       - name: Unit tests
         run: |
-          python -m coverage run -m unittest discover -s tests/unit -v
-          python -m coverage report --skip-covered --fail-under=20
+          python -m coverage run --source=src/qianyu -m unittest discover -s tests/unit -v
+      - name: UI smoke coverage
+        run: |
+          python -m coverage run --append --source=src/qianyu spike/ui_smoke.py
+          python -m coverage combine
+          python -m coverage report --skip-covered --fail-under=40
           python -m coverage xml -o coverage.xml
       - name: Smoke import
         run: python -c "import qianyu; print(qianyu.__version__)"
