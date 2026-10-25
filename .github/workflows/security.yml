@@ -24,6 +24,8 @@ jobs:
           python -m pip install pip-audit bandit cyclonedx-bom pip-licenses
       - name: Secret scan (blocking)
         run: python tools/scan_secrets.py
+      - name: OSV dependency audit (blocking)
+        run: python tools/osv_audit.py | Tee-Object -FilePath osv-audit.txt
       - name: Dependency audit (report only)
         continue-on-error: true
         run: |
@@ -47,4 +49,5 @@ jobs:
             bandit.json
             licenses.md
             sbom.json
+            osv-audit.txt
           if-no-files-found: warn

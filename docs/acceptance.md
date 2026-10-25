@@ -180,7 +180,7 @@ LOCAL2 SOURCE: 频谱：真实 · FFmpeg   LEVELS: 0.363
 | 项 | 结果 |
 |---|---|
 | 便携安装/启动/卸载 | ✅ |
-| 82 单测 | ✅ |
+| 84 单测 | ✅ |
 | Navidrome 真实联调 | ✅ |
 | Navidrome CI | ✅ |
 | Jellyfin 真实联调 | ✅ |

@@ -56,18 +56,24 @@ jobs:
         run: |
           if (Test-Path dist) { Remove-Item dist -Recurse -Force }
           Copy-Item dist-pyside6 dist -Recurse
-          foreach ($name in @("LICENSE", "COPYRIGHT", "NOTICE", "THIRD_PARTY_NOTICES.md", "SOURCE_OFFER.md")) {
+          foreach ($name in @("LICENSE", "COPYRIGHT", "NOTICE", "THIRD_PARTY_NOTICES.md", "SOURCE_OFFER.md", "SECURITY.md")) {
             Copy-Item $name "dist\QianYu\$name" -Force
           }
+          python tools\release_metadata.py --output dist\release-meta
+          Copy-Item "dist\release-meta\THIRD_PARTY_LICENSES.md" "dist\QianYu\THIRD_PARTY_LICENSES.md" -Force
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" packaging\qianyu.iss
           Compress-Archive -Path dist\QianYu\* -DestinationPath dist\QianYu-0.9.0-portable.zip -CompressionLevel Optimal
 
       - name: Checksums
         shell: pwsh
         run: |
-          Get-FileHash dist\QianYu\QianYu.exe, dist\installer\QianYu-0.9.0-setup.exe, dist\QianYu-0.9.0-portable.zip -Algorithm SHA256 |
+          Get-FileHash dist\QianYu\QianYu.exe, dist\installer\QianYu-0.9.0-setup.exe, dist\QianYu-0.9.0-portable.zip, dist\release-meta\sbom.json, dist\release-meta\THIRD_PARTY_LICENSES.md -Algorithm SHA256 |
             ForEach-Object { "$($_.Hash.ToLowerInvariant())  $(Split-Path $_.Path -Leaf)" } |
             Set-Content dist\SHA256SUMS.txt
+          Get-Content dist\SHA256SUMS.txt
+
+      - name: Verify release assets
+        run: python tools\verify_release.py dist
 
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4
@@ -77,6 +83,8 @@ jobs:
             dist\QianYu\QianYu.exe
             dist\installer\QianYu-0.9.0-setup.exe
             dist\QianYu-0.9.0-portable.zip
+            dist\release-meta\sbom.json
+            dist\release-meta\THIRD_PARTY_LICENSES.md
             dist\SHA256SUMS.txt
 
       - name: Publish prerelease
@@ -89,6 +97,8 @@ jobs:
             "dist\QianYu\QianYu.exe",
             "dist\installer\QianYu-0.9.0-setup.exe",
             "dist\QianYu-0.9.0-portable.zip",
+            "dist\release-meta\sbom.json",
+            "dist\release-meta\THIRD_PARTY_LICENSES.md",
             "libmpv-2.dll",
             "dist\SHA256SUMS.txt"
           )
@@ -97,6 +107,6 @@ jobs:
             gh release upload $tag @assets --clobber
           } else {
             gh release create $tag @assets --title "QianYu $tag" `
-              --notes "QianYu 0.9.0 RC. Unsigned until SignPath Foundation signing is approved." `
+              --notes "QianYu 0.9.0 RC. Unsigned build; verify SHA256SUMS. No SignPath dependency." `
               --prerelease
           }
