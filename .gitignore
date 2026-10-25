@@ -51,3 +51,7 @@ converter/
 *.p12
 spike/out/
 Min*.spec
+
+.coverage
+coverage.xml
+htmlcov/
