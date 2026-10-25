@@ -39,8 +39,7 @@ class AlbumCoverThread(QThread):
                 )
                 if not client.token or not client.user_id:
                     client.login()
-                url = (f"{client.server}/Items/{self._album_id}/Images/Primary?"
-                       f"api_key={client.token}")
+                url = client.album_cover_url(self._album_id)
             else:
                 client = make_client(self._config)
                 url = client.cover_url_for(self._cover_id)

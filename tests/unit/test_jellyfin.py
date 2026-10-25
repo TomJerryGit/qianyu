@@ -93,6 +93,13 @@ class JellyfinTests(unittest.TestCase):
         self.assertIn('Client="QianYu"', auth)
         self.assertIn('Token="tok"', auth)
 
+    def test_album_cover_url(self):
+        client = JellyfinClient("https://jf.example.com", "user", "pass", token="tok")
+        self.assertEqual(
+            client.album_cover_url("album-1"),
+            "https://jf.example.com/Items/album-1/Images/Primary?api_key=tok",
+        )
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

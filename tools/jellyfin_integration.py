@@ -49,9 +49,16 @@ def ensure_music() -> None:
         )
     cover = album_dir / "cover.jpg"
     if not cover.exists():
-        source = ROOT / "tools" / "navidrome-music" / "cover.jpg"
-        if source.exists():
-            cover.write_bytes(source.read_bytes())
+        ffmpeg = SERVER.parent / "ffmpeg.exe"
+        subprocess.run(
+            [
+                str(ffmpeg), "-y", "-f", "lavfi", "-i", "color=c=0x2E86C1:s=128x128",
+                "-frames:v", "1", str(cover),
+            ],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
 
 
@@ -104,7 +111,7 @@ def wait_public(timeout=90):
     return False
 
 
-def wait_startup(timeout=90):
+def wait_startup(timeout=180):
     deadline = time.time() + timeout
     while time.time() < deadline:
         status, _ = request("/Startup/Configuration")
@@ -212,6 +219,19 @@ def main() -> int:
             except Exception as exc:
                 say(f"ALBUM_SONGS_ERROR {type(exc).__name__}: {exc}")
             say(f"ALBUM_SONGS {len(album_tracks)}")
+        cover_ok = False
+        cover_bytes = 0
+        if albums:
+            try:
+                with urllib.request.urlopen(
+                    client.album_cover_url(albums[0]), timeout=20
+                ) as response:
+                    cover = response.read(4096)
+                    cover_ok = response.status == 200 and bool(cover)
+                    cover_bytes = len(cover)
+            except Exception as exc:
+                say(f"COVER_ERROR {type(exc).__name__}: {exc}")
+            say(f"COVER {cover_ok} {cover_bytes}")
         stream_ok = False
         stream_bytes = 0
         if songs:
@@ -223,12 +243,14 @@ def main() -> int:
             "songs": len(songs),
             "albums": len(albums),
             "album_tracks": len(album_tracks),
+            "cover": cover_ok,
+            "cover_bytes": cover_bytes,
             "stream": stream_ok,
             "stream_bytes": stream_bytes,
         }
         OUT.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
         say("RESULT " + json.dumps(result, ensure_ascii=False))
-        return 0 if songs and stream_ok else 6
+        return 0 if songs and stream_ok and cover_ok else 6
     finally:
         process.terminate()
         try:

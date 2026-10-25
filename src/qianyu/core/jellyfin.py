@@ -223,3 +223,8 @@ class JellyfinClient:
     def cover_url(self, item: JellyfinItem) -> str:
         query = urllib.parse.urlencode({"api_key": self.token})
         return f"{self.server}/Items/{urllib.parse.quote(item.id)}/Images/Primary?{query}"
+
+    def album_cover_url(self, album: JellyfinAlbum | str) -> str:
+        album_id = album.id if isinstance(album, JellyfinAlbum) else str(album)
+        query = urllib.parse.urlencode({"api_key": self.token})
+        return f"{self.server}/Items/{urllib.parse.quote(album_id)}/Images/Primary?{query}"
