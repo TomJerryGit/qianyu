@@ -42,6 +42,27 @@ D:\qianyu\tools\acceptance-install 已删除
 
 结论：便携安装/启动/卸载通过。
 
+## 1.1 Inno 安装包静默验收
+
+```powershell
+QianYu-0.9.0-setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOICONS
+  /DIR=D:\qianyu\tools\inno-acceptance /LOG=D:\qianyu\tools\inno-acceptance.log
+```
+
+结果：
+
+```
+INSTALL_EXIT 0
+EXISTS True
+
+SMOKE_EXIT 0
+
+UNINSTALL_EXIT 0
+```
+
+卸载后目录内文件数为 0。  
+结论：Inno 安装/启动/卸载通过。
+
 ## 2. 单元测试
 
 ```powershell
