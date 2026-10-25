@@ -151,6 +151,8 @@ tests/unit/      单元测试
 - [安全威胁模型详解](docs/security.md)
 - [发布完整性与可审计性](docs/release_integrity.md)
 - [依赖审计记录](docs/dependency_audit.md)
+- [安全 triage 记录](docs/security_triage.md)
+- [Authenticode 签名选项](docs/signing_options.md)
 - [原生组件许可证与编解码器评估](docs/licensing_assessment.md)
 - [真实桌面兼容矩阵](docs/compatibility_matrix.md)
 - [性能预算](docs/performance_budget.md)
