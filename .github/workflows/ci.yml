@@ -24,10 +24,12 @@ jobs:
       - name: Unit tests
         run: |
           python -m coverage run -m unittest discover -s tests/unit -v
-          python -m coverage report --skip-covered
+          python -m coverage report --skip-covered --fail-under=20
           python -m coverage xml -o coverage.xml
       - name: Smoke import
         run: python -c "import qianyu; print(qianyu.__version__)"
+      - name: Performance gate
+        run: python tools/perf_gate.py
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v4
